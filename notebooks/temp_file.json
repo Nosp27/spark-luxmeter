@@ -1,0 +1,1 @@
+{"id": "local-1607166254039", "name": "testSparkSession", "attempts": [{"startTime": "2020-12-05T11:04:13.941GMT", "endTime": "1969-12-31T23:59:59.999GMT", "lastUpdated": "2020-12-05T11:04:13.941GMT", "duration": 0, "sparkUser": "p.ashikhmin", "completed": false, "appSparkVersion": "3.0.1", "startTimeEpoch": 1607166253941, "endTimeEpoch": -1, "lastUpdatedEpoch": 1607166253941}]}
