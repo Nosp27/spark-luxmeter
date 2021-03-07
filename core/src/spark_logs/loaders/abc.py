@@ -1,5 +1,5 @@
-from spark_luxmeter.spark_logs.loaders.fetchers import HttpFetcher
-from spark_luxmeter.spark_logs.loaders.parsers import AppIdsFromHtml, JsonParser
+from spark_logs.loaders.fetchers import HttpFetcher
+from spark_logs.loaders.parsers import AppIdsFromHtml, JsonParser
 
 
 class MetricsLoader:
@@ -10,8 +10,8 @@ class MetricsLoader:
         self.applications = dict()
 
     def load_application_info_list(self):
-        data = self.application_list_parser.execute(self.fetcher.fetch(node="applications"))
-        data = [row for row in data if row["State"] == "RUNNING"]
+        data = self.application_list_parser.execute(self.fetcher.fetch(node="applications"), "ID")
+        data = {key: value for key, value in data.items() if value["State"] == "RUNNING"}
         self.applications = data
 
         return self.applications
@@ -21,7 +21,7 @@ class MetricsLoader:
         fetcher = self.fetcher
 
         # Load application data
-        for key in ["jobs", "stages", "executors"]:
+        for key, index in zip(["jobs", "stages", "executors"], ["jobId", "stageId", "id"]):
             response = fetcher.fetch(node=key, application_id=application_id)
-            ret[key] = self.json_parser.execute(response)
+            ret[key] = self.json_parser.execute(response, index)
         return ret

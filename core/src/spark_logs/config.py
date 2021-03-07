@@ -29,4 +29,4 @@ class Config:
         return self.config.get(key)
 
 
-CONFIG = Config(LocalFileConfigLoader())
+DEFAULT_CONFIG = Config(LocalFileConfigLoader())

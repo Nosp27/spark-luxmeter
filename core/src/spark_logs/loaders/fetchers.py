@@ -3,10 +3,13 @@ import abc
 import requests
 from yarl import URL
 
-from spark_luxmeter.spark_logs.config import CONFIG
+from spark_logs.config import DEFAULT_CONFIG
 
 
 class BaseFetcher:
+    def __init__(self, *, config=None):
+        self.config = config or DEFAULT_CONFIG
+
     @abc.abstractmethod
     def fetch(self, **kwargs):
         pass
@@ -14,7 +17,7 @@ class BaseFetcher:
 
 class HttpFetcher(BaseFetcher):
     def get_url(self, *, node: str, **data):
-        base_url = URL(CONFIG["base_url"])
+        base_url = URL(self.config["base_url"])
         if node == "applications":
             return base_url / "cluster"
 

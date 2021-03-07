@@ -10,17 +10,19 @@ class BaseParser:
     def read_response(self, response):
         pass
 
-    def execute(self, response):
+    def execute(self, response, index):
         data = self.read_response(response)
-        parsed_metrics = self.parse(data)
-        return self.postprocess_metrics(parsed_metrics)
+        parsed_metrics = self.parse(data, index)
+        return self.postprocess_metrics(parsed_metrics, index)
 
-    def parse(self, data):
+    def parse(self, data, index):
         return data
 
     @abc.abstractmethod
-    def postprocess_metrics(self, metrics):
-        return metrics
+    def postprocess_metrics(self, metrics, index):
+        if not isinstance(metrics, list):
+            return metrics
+        return {el[index]: el for el in metrics}
 
 
 class JsonParser(BaseParser):
@@ -38,18 +40,18 @@ class AppIdsFromHtml(BaseParser):
         app_data_tuples = json.loads(self._process_raw_data(applications_data_raw))
         return app_data_tuples
 
-    def parse(self, data):
+    def parse(self, data, index):
         headers = self.parse_headers(data)
         metrics = self.parse_metrics(data)
         applications = [dict(zip(headers, m)) for m in metrics]
         return applications
 
-    def postprocess_metrics(self, metrics):
+    def postprocess_metrics(self, metrics, index):
         for m in metrics:
             m["ID"] = html.fromstring(m["ID"]).text
             del m["TrackingUI"]
             del m["Progress"]
-        return metrics
+        return super().postprocess_metrics(metrics, index)
 
     def _process_raw_data(self, raw) -> str:
         processed = raw.split("=", 1)[1]
