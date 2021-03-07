@@ -19,9 +19,9 @@ class HttpFetcher(BaseFetcher):
             return base_url / "cluster"
 
         application_id = data.pop("application_id")
-        api_url = base_url / "proxy" / application_id / "api" / "v1"
+        api_url = base_url / "proxy" / application_id / "api" / "v1" / "applications" / application_id
         if node == "application":
-            return api_url / "applications" / application_id
+            api_url = api_url
         if node == "executors":
             return api_url / "executors"
         if node == "jobs":
@@ -29,6 +29,11 @@ class HttpFetcher(BaseFetcher):
         if node == "job":
             job_id = data["job_id"]
             return api_url / "jobs" / job_id
+        if node == "stages":
+            return api_url / "stages"
+        if node == "stage":
+            stage_id = data["stage_id"]
+            return api_url / "stages" / stage_id
         if node == "tasks":
             job_id = data["job_id"]
             return api_url / "jobs" / job_id / "tasks"
