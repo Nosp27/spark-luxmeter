@@ -1,4 +1,5 @@
-if [ ! "`docker --version`" ] then
+if [ ! "$(docker --version)" ]
+then
 	echo "No docker installed. Please install docker to continue"
 fi
 
@@ -11,7 +12,7 @@ sudo docker run -d --rm \
  -p 8126:8126 \
  graphiteapp/graphite-statsd
 
-if [ 0 -eq `sudo docker ps | grep graphite | wc -l` ]
+if [ 0 -eq $(sudo docker ps | grep -c graphite) ]
 then
 	echo "No graphite container seems to run"
 else

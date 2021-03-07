@@ -1,0 +1,18 @@
+services:
+  grafana:
+    image: grafana/grafana:7.3.6-ubuntu
+    container_name: luxmeter-grafana
+    ports:
+      - "3000:3000"
+  graphite:
+    image: graphiteapp/graphite-statsd
+    container_name: luxmeter-graphite
+    ports:
+      - "80/tcp"
+      - "0.0.0.0:2003-2004:2003-2004/tcp"
+      - "2013-2014/tcp"
+      - "8080/tcp"
+      - "0.0.0.0:2023-2024:2023-2024/tcp"
+      - "8125/tcp"
+      - "0.0.0.0:8126:8126/tcp"
+      - "0.0.0.0:8125:8125/udp"
