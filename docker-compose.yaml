@@ -16,3 +16,9 @@ services:
       - "8125/tcp"
       - "0.0.0.0:8126:8126/tcp"
       - "0.0.0.0:8125:8125/udp"
+  redis:
+    image: redis
+    container_name: luxmeter-redis
+    ports:
+      - "6379:6379"
+
