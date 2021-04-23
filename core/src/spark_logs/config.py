@@ -8,7 +8,7 @@ class ConfigLoader:
 
 
 class LocalFileConfigLoader(ConfigLoader):
-    def __init__(self, filename="config.json"):
+    def __init__(self, filename="/usr/local/share/spark-luxmeter/config.json"):
         self.filename = filename
 
     def load_config(self):
@@ -20,12 +20,21 @@ class Config:
         super().__init__()
         assert issubclass(loader.__class__, ConfigLoader)
         self.loader = loader
-        self.config = self.loader.load_config()
+        self.config = None
+
+    def ensure_config(self):
+        if self.config is None:
+            try:
+                self.config = self.loader.load_config()
+            except FileNotFoundError:
+                self.config = dict()
 
     def __getitem__(self, key):
+        self.ensure_config()
         return self.config[key]
 
     def get(self, key):
+        self.ensure_config()
         return self.config.get(key)
 
 
