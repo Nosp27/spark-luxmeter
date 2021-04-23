@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Any
 
 from spark_logs.hybrid_metrics.abc import HybridMetricStrategy
 import pandas as pd
@@ -6,25 +6,25 @@ import numpy as np
 
 
 class SkewDetectStrategy(HybridMetricStrategy):
+    additional_metrics = ("duration",)
+    skew_test_fields = ("recordsRead", "duration")
+
     def __init__(self, threshold=1.25):
         self.threshold = threshold
 
-    def apply(self, data: Dict[str, pd.DataFrame]):
-        stages = [data["stage"][stage_id] for stage_id in data["stages"]]
-        pass
+    def apply(self, job_data: Dict[str, Any]):
+        skewed_stages = []
+        for stage_id, stage_data in job_data["stage"].items():
+            tasks = stage_data["tasks"]
+            tasks_shuffle_metrics = self.get_stage_shuffle_metrics(tasks)
+            if any(self.skew_test(tasks_shuffle_metrics[f]) for f in self.skew_test_fields):
+                skewed_stages.append(stage_id)
+        return skewed_stages
 
-    def apply_for_job(self, data, job_id):
-        pass
-
-    def apply_for_stage(self, data, stage_id, field):
-        tasks = data["stage"][stage_id]["taskList"]
-
-        task_metrics = self.get_task_shuffle_metrics(tasks)
-        return self.skew_test(task_metrics[field])
-
-    def get_task_shuffle_metrics(self, tasks):
+    def get_stage_shuffle_metrics(self, tasks):
         tasks_shuffle_data = {
             task_data["taskId"]: {
+                **{metric: task_data[metric] for metric in self.additional_metrics},
                 **task_data[f"shuffleReadMetrics"],
                 **task_data[f"shuffleWriteMetrics"],
             }
@@ -54,5 +54,5 @@ class SkewDetectStrategy(HybridMetricStrategy):
         diffs = shifted - sorted_arr[:-1]
         diffs_normalized = diffs / np.linalg.norm(diffs)
 
-        expected_max_deviation = np.std(diffs_normalized) * self.threshold
-        return diffs_normalized.max() - expected_max_deviation > diffs_normalized.min()
+        actual_quantile_deviation = np.max(diffs_normalized)
+        return actual_quantile_deviation > self.threshold

@@ -11,4 +11,4 @@ def test_app_list_fetcher():
             os.path.join("..", "share", "sample_applications_page.html")
         ).read()
         fetcher = fetchers.HttpFetcher(config={"base_url": "http://somesite.com"})
-        fetcher.fetch(node="applications")
+        fetcher.fetch(node="applications", resp_format="html")
