@@ -1,6 +1,6 @@
 import pytest
 
-from spark_luxmeter.spark_logs.hybrid_metrics.shuffle_score import SkewDetectStrategy
+from spark_logs.hybrid_metrics.shuffle_score import SkewDetectStrategy
 
 
 @pytest.mark.parametrize(
@@ -16,13 +16,13 @@ from spark_luxmeter.spark_logs.hybrid_metrics.shuffle_score import SkewDetectStr
                     "remoteBytesRead": 31919134,
                     "remoteBytesReadToDisk": 0,
                     "localBytesRead": 0,
-                    "recordsRead": 95085
+                    "recordsRead": 95085,
                 },
                 "shuffleWriteMetrics": {
                     "bytesWritten": 0,
                     "writeTime": 0,
-                    "recordsWritten": 0
-                }
+                    "recordsWritten": 0,
+                },
             },
             {
                 "taskId": 2,
@@ -33,13 +33,13 @@ from spark_luxmeter.spark_logs.hybrid_metrics.shuffle_score import SkewDetectStr
                     "remoteBytesRead": 30357720,
                     "remoteBytesReadToDisk": 0,
                     "localBytesRead": 1439773,
-                    "recordsRead": 95084
+                    "recordsRead": 95084,
                 },
                 "shuffleWriteMetrics": {
                     "bytesWritten": 0,
                     "writeTime": 0,
-                    "recordsWritten": 0
-                }
+                    "recordsWritten": 0,
+                },
             },
             {
                 "taskId": 3,
@@ -50,25 +50,19 @@ from spark_luxmeter.spark_logs.hybrid_metrics.shuffle_score import SkewDetectStr
                     "remoteBytesRead": 31801199,
                     "remoteBytesReadToDisk": 0,
                     "localBytesRead": 0,
-                    "recordsRead": 95093
+                    "recordsRead": 95093,
                 },
                 "shuffleWriteMetrics": {
                     "bytesWritten": 0,
                     "writeTime": 0,
-                    "recordsWritten": 0
-                }
-            }
+                    "recordsWritten": 0,
+                },
+            },
         ]
-    ]
+    ],
 )
 def test_shuffle_score(metrics):
-    stage_metrics = {
-        "stage": {
-            "stage_1": {
-                "taskList": metrics
-            }
-        }
-    }
+    stage_metrics = {"stage": {"stage_1": {"taskList": metrics}}}
     skew_detector = SkewDetectStrategy()
     x = skew_detector.apply_for_stage(stage_metrics, "stage_1", "recordsRead")
     print("X")

@@ -1,6 +1,6 @@
 from typing import Dict
 
-from spark_luxmeter.spark_logs.hybrid_metrics.abc import HybridMetricStrategy
+from spark_logs.hybrid_metrics.abc import HybridMetricStrategy
 import pandas as pd
 import numpy as np
 
@@ -24,7 +24,10 @@ class SkewDetectStrategy(HybridMetricStrategy):
 
     def get_task_shuffle_metrics(self, tasks):
         tasks_shuffle_data = {
-            task_data["taskId"]: {**task_data[f"shuffleReadMetrics"], **task_data[f"shuffleWriteMetrics"]}
+            task_data["taskId"]: {
+                **task_data[f"shuffleReadMetrics"],
+                **task_data[f"shuffleWriteMetrics"],
+            }
             for task_data in tasks
         }
 
@@ -35,7 +38,9 @@ class SkewDetectStrategy(HybridMetricStrategy):
             raise ValueError("No task data")
 
         return pd.DataFrame.from_dict(
-            {k: v.values() for k, v in tasks_shuffle_data.items()}, orient="index", columns=colnames
+            {k: v.values() for k, v in tasks_shuffle_data.items()},
+            orient="index",
+            columns=colnames,
         )
 
     def skew_test(self, arr: np.ndarray):
