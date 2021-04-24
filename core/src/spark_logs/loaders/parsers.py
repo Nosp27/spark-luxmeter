@@ -72,7 +72,7 @@ class AppIdsFromHtml(BaseParser):
         headers = self.parse_headers(parsed_data)
         metrics = self.parse_metrics(parsed_data)
         applications = [dict(zip(headers, m)) for m in metrics]
-        return applications
+        return self.postprocess_metrics(applications)
 
     def postprocess_metrics(self, metrics):
         for m in metrics:

@@ -1,10 +1,24 @@
-from spark_logs.loaders import abc
+import click
+
+
+@click.group()
+def main():
+    pass
+
+
+@main.command()
+def loader():
+    from .loaders.api import app
+
+    app.start()
+
+
+@main.command()
+def hybrid_metrics():
+    from .hybrid_metrics.api import app
+
+    app.start()
 
 
 if __name__ == "__main__":
-    l = abc.MetricsLoader()
-    ids = list(l.load_application_info_list().keys())
-    our_id = ids[0]
-    print("id:", our_id)
-    data = l.load(our_id)
-    breakpoint()
+    main()

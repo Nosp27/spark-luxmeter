@@ -13,12 +13,14 @@ class SkewDetectStrategy(HybridMetricStrategy):
         self.threshold = threshold
 
     def apply(self, job_data: Dict[str, Any]):
-        skewed_stages = []
+        skewed_stages = set()
         for stage_id, stage_data in job_data["stage"].items():
             tasks = stage_data["tasks"]
             tasks_shuffle_metrics = self.get_stage_shuffle_metrics(tasks)
-            if any(self.skew_test(tasks_shuffle_metrics[f]) for f in self.skew_test_fields):
-                skewed_stages.append(stage_id)
+            if any(
+                self.skew_test(tasks_shuffle_metrics[f]) for f in self.skew_test_fields
+            ):
+                skewed_stages.add(stage_id)
         return skewed_stages
 
     def get_stage_shuffle_metrics(self, tasks):

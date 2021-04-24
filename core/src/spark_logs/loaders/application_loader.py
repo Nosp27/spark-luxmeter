@@ -1,18 +1,36 @@
 import asyncio
+import time
 
+import orjson
+from typing import Optional
+
+from aioredis import Redis
+
+from spark_logs import db
 from spark_logs.loaders.clients import MetricsClient
 
 
 class ApplicationLoader:
-    def __init__(self, metrics_client: MetricsClient, app_id, fetch_last_jobs):
+    def __init__(
+        self, metrics_client: MetricsClient, app_id, fetch_last_jobs, timeout=10
+    ):
         self.app_id = app_id
         self.metrics_client: MetricsClient = metrics_client
-        self.app_metrics = []
-        self.offset = dict()
-
         self.fetch_last_jobs = fetch_last_jobs
+        self.redis: Optional[Redis] = None
+        self.timeout = timeout
 
-    async def append_app_metrics(self):
+    async def loop_update_app_metrics(self):
+        while True:
+            await self.update_app_metrics()
+            await asyncio.sleep(self.timeout)
+
+    async def update_app_metrics(self):
+        execution_timestamp = time.time()
+        fresh_metrics = await self.fresh_app_metrics()
+        await self._report_metrics(fresh_metrics, execution_timestamp)
+
+    async def fresh_app_metrics(self):
         metrics_client = self.metrics_client
         metrics_data = dict()
         executor_metrics = await metrics_client.get_node_metrics(
@@ -27,7 +45,13 @@ class ApplicationLoader:
             *[self.fetch_for_job(job) for job in jobs_to_fetch]
         )
         metrics_data["job"] = dict(jobs_data)
-        self.app_metrics.append(metrics_data)
+        return metrics_data
+
+    async def _report_metrics(self, fresh_metrics, execution_timestamp):
+        if self.redis is None:
+            self.redis = await db.connect_with_redis()
+        value = orjson.dumps(fresh_metrics)
+        await self.redis.zadd(self.app_id, execution_timestamp, value)
 
     async def fetch_for_job(self, job):
         stage_ids = job["stageIds"]
@@ -35,7 +59,11 @@ class ApplicationLoader:
         job_data["stage"] = dict()
 
         job_stages = await asyncio.gather(
-            *[self.fetch_for_stage(stage_id) for stage_id in stage_ids]
+            *[
+                self.fetch_for_stage(stage_id)
+                for stage_id in stage_ids
+                if stage_id["status"] not in ("COMPLETE", "RUNNING")
+            ]
         )
         job_data["stage"] = dict(job_stages)
         return job["jobId"], job_data
@@ -46,3 +74,25 @@ class ApplicationLoader:
             "stage", application_id=self.app_id, stage_id=stage_id
         )
         return stage_id, {"data": stage, "tasks": tasks}
+
+
+class AppIdsLoader:
+    def __init__(
+        self, redis, metrics_client: MetricsClient, timeout=10
+    ):
+        self.metrics_client: MetricsClient = metrics_client
+        self.redis: Redis = redis
+        self.timeout = timeout
+
+    async def set_for_app(self, app):
+        if app["State"] == "RUNNING":
+            await self.redis.zadd("applications", int(app["StartTime"]), app["ID"])
+
+    async def loop_update_app_ids(self):
+        while True:
+            print("Updating app ids")
+            apps = await self.metrics_client.get_node_metrics("applications")
+            await asyncio.gather(*[self.set_for_app(app) for app in apps])
+            await asyncio.sleep(self.timeout)
+
+
