@@ -1,6 +1,5 @@
 import asyncio
 import json
-
 import aiohttp
 import orjson
 from aiohttp import web
@@ -30,6 +29,7 @@ async def client_for_app(request: aiohttp.web.Request):
 @routes.post("/client/create")
 async def client_for_app(request: aiohttp.web.Request):
     app_id = request.query["app_id"]
+    print(app_id)
     app = request.app
     if app_id in app["LOADERS"]:
         return aiohttp.web.json_response({"status": "client exists"}, status=302)

@@ -21,9 +21,14 @@ class ApplicationLoader:
         self.timeout = timeout
 
     async def loop_update_app_metrics(self):
-        while True:
-            await self.update_app_metrics()
-            await asyncio.sleep(self.timeout)
+        try:
+            while True:
+                await self.update_app_metrics()
+                await asyncio.sleep(self.timeout)
+        except Exception:
+            import traceback
+            traceback.print_exc()
+            raise
 
     async def update_app_metrics(self):
         execution_timestamp = time.time()
@@ -50,21 +55,15 @@ class ApplicationLoader:
     async def _report_metrics(self, fresh_metrics, execution_timestamp):
         if self.redis is None:
             self.redis = await db.connect_with_redis()
-        value = orjson.dumps(fresh_metrics)
+        value = orjson.dumps(fresh_metrics, option=orjson.OPT_NON_STR_KEYS)
         await self.redis.zadd(self.app_id, execution_timestamp, value)
 
     async def fetch_for_job(self, job):
         stage_ids = job["stageIds"]
         job_data = dict()
         job_data["stage"] = dict()
-
-        job_stages = await asyncio.gather(
-            *[
-                self.fetch_for_stage(stage_id)
-                for stage_id in stage_ids
-                if stage_id["status"] not in ("COMPLETE", "RUNNING")
-            ]
-        )
+        job_stages = await asyncio.gather(*[self.fetch_for_stage(stage_id) for stage_id in stage_ids])
+        job_stages = [stage for stage in job_stages if stage[1]["data"]["status"] not in ("COMPLETE", "RUNNING")]
         job_data["stage"] = dict(job_stages)
         return job["jobId"], job_data
 

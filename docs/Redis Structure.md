@@ -17,7 +17,7 @@ within one round
 
 ```
 {application_id:jobs}:
-    zset(jobs)
+    set(jobs)
 ```
 
 
@@ -27,3 +27,9 @@ within one round
 ```
 
 - `name_of_test`: name of the test, for example `skew_test`
+
+
+### Job Groups
+```
+{job_group:<app_id>:<job_group_hash>}: job_group_name
+```
