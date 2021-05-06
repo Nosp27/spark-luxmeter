@@ -3,16 +3,16 @@ from spark_logs.loaders.parsers import (
     AppIdsFromHtml,
     JsonParser,
     StageExtendedParser,
-    JobIds,
+    Jobs,
 )
 
 
 class MetricsClient:
-    def __init__(self, *, active_jobs_only):
+    def __init__(self, *, inactive_jobs_only):
         self.fetcher = HttpFetcher()
         self.parsers = {
             "applications": AppIdsFromHtml(),
-            "jobs": JobIds(active_only=active_jobs_only),
+            "jobs": Jobs(inactive_only=inactive_jobs_only),
             "stage": StageExtendedParser(),
         }
         self.default_parser = JsonParser()

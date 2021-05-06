@@ -13,7 +13,10 @@ class SkewDetectStrategy(HybridMetricStrategy):
         for stage_id, stage_data in job_data["stage"].items():
             tasks = stage_data["tasks"]
             tasks_shuffle_metrics = self.get_stage_shuffle_metrics(tasks)
-            scores = [self.skew_test(tasks_shuffle_metrics[metric].values) for metric in self.metrics]
+            scores = [
+                self.skew_test(tasks_shuffle_metrics[metric].values)
+                for metric in self.metrics
+            ]
             return np.mean(scores)
 
     def get_stage_shuffle_metrics(self, tasks):

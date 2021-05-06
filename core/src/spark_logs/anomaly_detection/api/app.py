@@ -6,22 +6,27 @@ from aiohttp import http_exceptions
 from aiohttp import web
 
 from spark_logs import db
+from spark_logs.anomaly_detection.dataset_extractor import JobGroupedExtractor
+from spark_logs.anomaly_detection.iforest_detector import IForestDetector
+from spark_logs.anomaly_detection.processor import DetectionProcessor
 from spark_logs.hybrid_metrics import skewness_score
 
 routes = web.RouteTableDef()
 
 
-@routes.post("/metric/create")
+@routes.post("/detector/create")
 async def client_for_app(request: aiohttp.web.Request):
     app = request.app
     try:
         app_id = request.query["app_id"]
         metric_name = request.query["metric_name"]
-        processor = app["METRIC_PROCESSORS"][metric_name]()
+        processor = app["METRIC_PROCESSORS"][metric_name](
+            app_id, JobGroupedExtractor, IForestDetector()
+        )
     except KeyError as exc:
         raise http_exceptions.HttpBadRequest("No key " + str(exc))
     redis = app["REDIS"]
-    task = asyncio.create_task(processor.loop_app_apply(redis, app_id))
+    task = asyncio.create_task(processor.loop_process(redis))
 
     app["APP_METRICS"][app_id][metric_name] = {
         "processor": processor,
@@ -31,7 +36,7 @@ async def client_for_app(request: aiohttp.web.Request):
     return aiohttp.web.json_response({"status": "created new processor"})
 
 
-@routes.post("/metric/rm")
+@routes.post("/detector/rm")
 async def rm_metric_for_app(request: aiohttp.web.Request):
     app = request.app
     try:
@@ -49,7 +54,7 @@ async def rm_metric_for_app(request: aiohttp.web.Request):
     return aiohttp.web.json_response({"status": "Deleted processor"})
 
 
-@routes.post("/metric/rm_app")
+@routes.post("/detector/rm_app")
 async def rm_metrics_for_app(request: aiohttp.web.Request):
     app = request.app
     try:
@@ -74,9 +79,9 @@ async def create_redis_connection(app):
 def start():
     app = aiohttp.web.Application(middlewares=[aiohttp.web.normalize_path_middleware()])
     app["METRIC_PROCESSORS"] = {
-        "skewness_score": skewness_score.SkewDetectStrategy,
+        "iforest_processor": DetectionProcessor,
     }
     app["APP_METRICS"] = defaultdict(dict)
     app.router.add_routes(routes)
     app.on_startup.append(create_redis_connection)
-    aiohttp.web.run_app(app, port=10111)
+    aiohttp.web.run_app(app, port=10000)

@@ -1,3 +1,4 @@
+import numpy
 from sklearn.ensemble import IsolationForest
 
 
@@ -9,5 +10,5 @@ class IForestDetector:
         model = IsolationForest(max_features=3)
         return model
 
-    def detect_anomalies(self, arr):
+    def detect_anomalies(self, arr) -> numpy.array:
         return self.model.predict(arr)

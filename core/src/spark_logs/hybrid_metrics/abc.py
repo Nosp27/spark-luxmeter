@@ -5,6 +5,8 @@ from typing import Any, Dict
 import orjson
 from aioredis import Redis
 
+from spark_logs.types import ApplicationMetrics
+
 
 class HybridMetricStrategy(abc.ABC):
     test_name = None
@@ -17,24 +19,23 @@ class HybridMetricStrategy(abc.ABC):
         try:
             while True:
                 await self._app_latest_apply(redis, app_id)
-                await asyncio.sleep(30)
+                await asyncio.sleep(3)
         except Exception:
             import traceback
+
             traceback.print_exc()
             raise
 
     async def _app_latest_apply(self, redis: Redis, app_id):
         data = await redis.zrevrangebyscore(app_id, offset=0, count=1)
-        applications_data = [orjson.loads(d) for d in data]
+        applications_data = [ApplicationMetrics.from_json(d) for d in data]
         for app_data in applications_data:
             jobs = app_data["job"]
             for job_data in jobs.values():
                 result = self.apply(job_data)
                 await asyncio.gather(
                     *[
-                        self.write_stage_test(
-                            redis, app_id, stage_id, float(result)
-                        )
+                        self.write_stage_test(redis, app_id, stage_id, float(result))
                         for stage_id in job_data["stage"]
                     ]
                 )

@@ -16,8 +16,8 @@ within one round
 ```
 
 ```
-{application_id:jobs}:
-    set(jobs)
+{application_id:completed_jobs}:
+    zset(jobs, score=completionTime)
 ```
 
 
@@ -32,4 +32,6 @@ within one round
 ### Job Groups
 ```
 {job_group:<app_id>:<job_group_hash>}: job_group_name
+
+{last_job_score:<app_id>}: last_job_score
 ```

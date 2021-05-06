@@ -4,15 +4,24 @@ import json
 
 from lxml import html
 
+from spark_logs.types import Stage, Job, Task, StageTasks
+
 
 class BaseParser:
     resp_format = None
+    node_cls = None
 
     def execute(self, response_data):
-        return self._parse(response_data)
+        return self._node_transform(self._parse(response_data))
 
     def _parse(self, data):
         return data
+
+    def _node_transform(self, data):
+        if self.node_cls is None:
+            return data
+        d = [self.node_cls.create_from_dict(x) for x in data]
+        return d
 
 
 class JsonParser(BaseParser):
@@ -30,27 +39,36 @@ class StageIds(JsonParser):
         return [row["stageId"] for row in data if self._check(row)]
 
 
-class JobIds(JsonParser):
-    def __init__(self, *, active_only):
-        self.active_only = active_only
+class Jobs(JsonParser):
+    node_cls = Job
+
+    def __init__(self, *, inactive_only):
+        self.inactive_only = inactive_only
 
     def _check(self, row):
-        return (row["status"] == "ACTIVE") if self.active_only else True
+        return (row["status"] not in ("ACTIVE",)) if self.inactive_only else True
 
     def _parse(self, data):
-        return [
-            {"jobId": row["jobId"], "stageIds": row["stageIds"]}
-            for row in data
-            if self._check(row)
-        ]
+        return [row for row in data if self._check(row)]
 
 
 class StageExtendedParser(JsonParser):
+    node_cls = StageTasks
+    stage_node_cls = Stage
+    task_node_cls = Task
+
     def _parse(self, data):
         data, *_ = data  # Stage data is a list of one element
-        tasks = {t["taskId"]: t for t in data["tasks"].values()}
+        tasks = {str(t["taskId"]): t for t in data["tasks"].values()}
         del data["tasks"]
         return data, tasks
+
+    def _node_transform(self, data_and_tasks):
+        stage, tasks = data_and_tasks
+        return self.node_cls(
+            stage=self.stage_node_cls.create_from_dict(stage),
+            tasks={k: self.task_node_cls.create_from_dict(v) for k, v in tasks.items()},
+        )
 
 
 class AppIdsFromHtml(BaseParser):

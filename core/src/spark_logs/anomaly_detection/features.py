@@ -6,12 +6,12 @@ class Feature:
 class StageFeature(Feature):
     def apply(self, stage_data):
         common, tasks = stage_data.values()
-        return self.common_process(common) or self.tasks_process(tasks)
+        return self.common(common) or self.tasks(tasks)
 
-    def common_process(self, common):
+    def common(self, common):
         pass
 
-    def tasks_process(self, tasks):
+    def tasks(self, tasks):
         pass
 
 

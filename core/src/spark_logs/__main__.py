@@ -20,5 +20,12 @@ def hybrid_metrics():
     app.start()
 
 
+@main.command()
+def anomaly_detection():
+    from .anomaly_detection.api import app
+
+    app.start()
+
+
 if __name__ == "__main__":
     main()
