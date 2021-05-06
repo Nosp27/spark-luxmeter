@@ -1,9 +1,8 @@
 import asyncio
 import itertools
 import time
-from typing import Optional, List, Dict, Tuple
+from typing import Optional, List, Dict
 
-import orjson
 from aioredis import Redis
 
 from spark_logs import db, kvstore
@@ -63,20 +62,22 @@ class ApplicationLoader:
             self.redis = await db.connect_with_redis()
         value = fresh_metrics.dump()
         await self.redis.zadd(self.app_id, execution_timestamp, value)
-
-        if len(fresh_metrics.jobs_stages) > 0:
-            args = list(
-                itertools.chain.from_iterable(
-                    [
-                        (int(job_id), job_data.dump())
-                        for job_id, job_data in fresh_metrics.jobs_stages.items()
-                        if job_data.job.completionTime is not None
-                    ]
+        args = list(
+            itertools.chain.from_iterable(
+                [
+                    (int(job_id), job_data.dump())
+                    for job_id, job_data in fresh_metrics.jobs_stages.items()
+                    if job_data.job.completionTime is not None
+                ]
+            )
+        )
+        if len(args) > 0:
+            try:
+                await self.redis.zadd(
+                    kvstore.sequential_jobs_key(app_id=self.app_id), *args
                 )
-            )
-            await self.redis.zadd(
-                kvstore.sequential_jobs_key(app_id=self.app_id), *args
-            )
+            except Exception as exc:
+                raise
 
     async def fetch_for_job(self, job: Job):
         stage_ids = job.stageIds

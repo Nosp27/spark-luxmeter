@@ -3,7 +3,7 @@ def applications_key():
 
 
 def sequential_jobs_key(*, app_id):
-    return f"sequential_jobs.{app_id}"
+    return f"sequential_jobs:{app_id}"
 
 
 def hybrid_metric_key(*, app_id, metric_name, job_id):
