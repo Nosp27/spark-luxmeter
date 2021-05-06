@@ -31,14 +31,15 @@ class Node:
 
     @classmethod
     def create_from_dict(cls, data: Dict[str, Any]):
+        if issubclass(data.__class__, Node):
+            return data
         assert isinstance(data, dict), type(data)
         field_names = {f.name for f in attr.fields(cls)}
         kwargs = {x: data[x] for x in field_names & set(data.keys())}
         try:
             d = cls(**kwargs)
             return d
-        except:
-            import pudb; pudb.set_trace()
+        except Exception as exc:
             raise
 
     def dump(self):
@@ -120,6 +121,7 @@ class Task(Node):
     executorId: str = attr.ib()
     host: str = attr.ib()
     status: str = attr.ib()
+    duration: int = attr.ib()
     taskLocality: str = attr.ib()
     speculative: bool = attr.ib()
     taskMetrics: Optional[Dict[str, Any]] = attr.ib(default=attr.Factory(dict))

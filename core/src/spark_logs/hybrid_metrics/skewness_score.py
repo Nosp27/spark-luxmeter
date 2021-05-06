@@ -4,25 +4,26 @@ from spark_logs.hybrid_metrics.abc import HybridMetricStrategy
 import pandas as pd
 import numpy as np
 
+from spark_logs.types import StageTasks, Task
+
 
 class SkewDetectStrategy(HybridMetricStrategy):
     metrics = ("duration",)
     test_name = "skewness_score"
 
-    def apply(self, job_data: Dict[str, Any]):
-        for stage_id, stage_data in job_data["stage"].items():
-            tasks = stage_data["tasks"]
-            tasks_shuffle_metrics = self.get_stage_shuffle_metrics(tasks)
-            scores = [
-                self.skew_test(tasks_shuffle_metrics[metric].values)
-                for metric in self.metrics
-            ]
-            return np.mean(scores)
+    def apply(self, stage_and_tasks: StageTasks) -> float:
+        tasks = stage_and_tasks.tasks
+        tasks_shuffle_metrics = self.get_stage_shuffle_metrics(tasks)
+        scores = [
+            self.skew_test(tasks_shuffle_metrics[metric].values)
+            for metric in self.metrics
+        ]
+        return float(np.mean(scores))
 
-    def get_stage_shuffle_metrics(self, tasks):
+    def get_stage_shuffle_metrics(self, tasks: Dict[str, Task]):
         tasks_shuffle_features = {
-            task_data["taskId"]: {
-                **{metric: task_data[metric] for metric in self.metrics},
+            task_data.taskId: {
+                **{metric: getattr(task_data, metric) for metric in self.metrics},
             }
             for task_data in tasks.values()
         }

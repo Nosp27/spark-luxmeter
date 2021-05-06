@@ -13,7 +13,7 @@ from spark_logs.types import Executor, Job, StageTasks, JobStages, ApplicationMe
 
 class ApplicationLoader:
     def __init__(
-            self, metrics_client: MetricsClient, app_id, fetch_last_jobs, timeout=10
+        self, metrics_client: MetricsClient, app_id, fetch_last_jobs, timeout=10
     ):
         self.app_id = app_id
         self.metrics_client: MetricsClient = metrics_client
@@ -56,21 +56,27 @@ class ApplicationLoader:
             executor_metrics=executor_metrics, jobs_stages=jobs_data
         )
 
-    async def _report_metrics(self, fresh_metrics: ApplicationMetrics, execution_timestamp):
+    async def _report_metrics(
+        self, fresh_metrics: ApplicationMetrics, execution_timestamp
+    ):
         if self.redis is None:
             self.redis = await db.connect_with_redis()
         value = fresh_metrics.dump()
         await self.redis.zadd(self.app_id, execution_timestamp, value)
 
         if len(fresh_metrics.jobs_stages) > 0:
-            args = list(itertools.chain.from_iterable(
-                [
-                    (int(job_id), job_data.dump())
-                    for job_id, job_data in fresh_metrics.jobs_stages.items()
-                    if job_data.job.completionTime is not None
-                ]
-            ))
-            await self.redis.zadd(kvstore.sequential_jobs_key(app_id=self.app_id), *args)
+            args = list(
+                itertools.chain.from_iterable(
+                    [
+                        (int(job_id), job_data.dump())
+                        for job_id, job_data in fresh_metrics.jobs_stages.items()
+                        if job_data.job.completionTime is not None
+                    ]
+                )
+            )
+            await self.redis.zadd(
+                kvstore.sequential_jobs_key(app_id=self.app_id), *args
+            )
 
     async def fetch_for_job(self, job: Job):
         stage_ids = job.stageIds

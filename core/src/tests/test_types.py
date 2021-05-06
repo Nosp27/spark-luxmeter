@@ -1,7 +1,7 @@
 import orjson
 import pytest
 
-from spark_logs.types import Job, Stage, Task, JobStages, StageTasks, ApplicationMetrics
+from spark_logs.types import Job, Stage, Task, JobStages, StageTasks, ApplicationMetrics, Executor
 
 
 @pytest.fixture
@@ -148,3 +148,5 @@ def test_load_from_json(sample_job, sample_stage, sample_task):
 
 def test_restore(data_from_redis):
     app_metrics = ApplicationMetrics.from_json(data_from_redis)
+    assert all(isinstance(x, Executor) for x in app_metrics.executor_metrics)
+    assert all(isinstance(x, JobStages) for x in app_metrics.jobs_stages.values())

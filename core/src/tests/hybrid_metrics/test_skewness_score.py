@@ -1,6 +1,10 @@
+from collections import defaultdict
+from unittest.mock import Mock, MagicMock
+
 import pytest
 
 from spark_logs.hybrid_metrics.skewness_score import SkewDetectStrategy
+from spark_logs.types import StageTasks, Stage, Node
 
 
 @pytest.mark.parametrize(
@@ -68,7 +72,13 @@ from spark_logs.hybrid_metrics.skewness_score import SkewDetectStrategy
     ],
 )
 def test_shuffle_score(metrics, expected_skewness_test):
-    stage_metrics = {"stage": {"stage_1": {"tasks": metrics}}}
+    stage = MagicMock()
+    stage.__class__ = Node
+    nones = ["index", "attempt", "executorId", "host", "status", "taskLocality", "speculative"]
+    tasks = [{none: None for none in nones}] * len(metrics)
+    for tasks_el, metrics_el in zip(tasks, metrics):
+        tasks_el.update(metrics_el)
+    stage_metrics = StageTasks(stage=stage, tasks={v["taskId"]: v for v in tasks})
     skew_detector = SkewDetectStrategy()
     actual_skew_test = skew_detector.apply(stage_metrics)
     assert bool(actual_skew_test) == expected_skewness_test

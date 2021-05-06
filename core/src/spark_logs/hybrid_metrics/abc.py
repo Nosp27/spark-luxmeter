@@ -1,18 +1,17 @@
 import abc
 import asyncio
-from typing import Any, Dict
+from typing import Dict, List
 
-import orjson
 from aioredis import Redis
 
-from spark_logs.types import ApplicationMetrics
+from spark_logs.types import ApplicationMetrics, JobStages, StageTasks
 
 
 class HybridMetricStrategy(abc.ABC):
     test_name = None
 
     @abc.abstractmethod
-    def apply(self, data: Dict[str, Any]):
+    def apply(self, data: StageTasks) -> float:
         pass
 
     async def loop_app_apply(self, redis: Redis, app_id):
@@ -28,15 +27,18 @@ class HybridMetricStrategy(abc.ABC):
 
     async def _app_latest_apply(self, redis: Redis, app_id):
         data = await redis.zrevrangebyscore(app_id, offset=0, count=1)
-        applications_data = [ApplicationMetrics.from_json(d) for d in data]
+        applications_data: List[ApplicationMetrics] = [
+            ApplicationMetrics.from_json(d) for d in data
+        ]
         for app_data in applications_data:
-            jobs = app_data["job"]
+            jobs: Dict[str, JobStages] = app_data.jobs_stages
             for job_data in jobs.values():
-                result = self.apply(job_data)
                 await asyncio.gather(
                     *[
-                        self.write_stage_test(redis, app_id, stage_id, float(result))
-                        for stage_id in job_data["stage"]
+                        self.write_stage_test(
+                            redis, app_id, stage_id, float(self.apply(stage_data))
+                        )
+                        for stage_id, stage_data in job_data.stages.items()
                     ]
                 )
 
