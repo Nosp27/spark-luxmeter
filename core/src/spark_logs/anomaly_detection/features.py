@@ -1,17 +1,30 @@
+import abc
+from typing import List, Union
+
+from spark_logs.types import StageTasks, Stage, Task
+
+
 class Feature:
+    @property
+    def name(self):
+        raise NotImplementedError()
+
     def apply(self, data):
         pass
 
 
 class StageFeature(Feature):
-    def apply(self, stage_data):
-        common, tasks = stage_data.values()
-        return self.common(common) or self.tasks(tasks)
+    def apply(self, stage_data: StageTasks) -> Union[int, float]:
+        return self.common(stage_data.stage) or self.tasks(
+            list(stage_data.tasks.values())
+        )
 
-    def common(self, common):
+    @abc.abstractmethod
+    def common(self, common: Stage):
         pass
 
-    def tasks(self, tasks):
+    @abc.abstractmethod
+    def tasks(self, tasks: List[Task]):
         pass
 
 
@@ -20,15 +33,27 @@ class JobFeature(Feature):
 
 
 class StageRunTimeFeature(StageFeature):
-    def common(self, common):
-        return common["executorRunTime"]
+    @property
+    def name(self):
+        return "stage_run_time"
+
+    def common(self, common: Stage) -> int:
+        return common.executorRunTime
 
 
 class StageShuffleReadFeature(StageFeature):
-    def common(self, common):
-        return common["shuffleReadBytes"]
+    @property
+    def name(self):
+        return "stage_shuffle_read"
+
+    def common(self, common: Stage) -> int:
+        return common.shuffleReadBytes
 
 
 class StageShuffleWriteFeature(StageFeature):
-    def common(self, common):
-        return common["shuffleWriteBytes"]
+    @property
+    def name(self):
+        return "stage_shuffle_write"
+
+    def common(self, common: Stage) -> int:
+        return common.shuffleWriteBytes

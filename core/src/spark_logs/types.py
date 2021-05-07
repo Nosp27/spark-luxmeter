@@ -11,6 +11,7 @@ def maybe(foo):
         if arg is None:
             return arg
         return foo(arg)
+
     return inner
 
 
@@ -21,6 +22,7 @@ def for_each(foo):
         elif isinstance(arg_collection, dict):
             return {k: foo(v) for k, v in arg_collection.items()}
         raise NotImplementedError()
+
     return inner
 
 
@@ -48,14 +50,18 @@ class Node:
                 if issubclass(o.__class__, Node):
                     return o._to_dict()
             except Exception as exc:
-                import pudb; pudb.set_trace()
+                import pudb
+
+                pudb.set_trace()
                 raise
             raise TypeError()
 
         try:
             return orjson.dumps(self._to_dict(), default=default)
         except Exception as exc:
-            import pudb; pudb.set_trace()
+            import pudb
+
+            pudb.set_trace()
             raise
 
     def _to_dict(self):
@@ -68,7 +74,9 @@ class Job(Node):
     jobId: str = attr.ib(converter=str)
     name: str = attr.ib()
     submissionTime: datetime = attr.ib(converter=parser.parse)
-    completionTime: Optional[datetime] = attr.ib(converter=maybe(parser.parse), default=None)
+    completionTime: Optional[datetime] = attr.ib(
+        converter=maybe(parser.parse), default=None
+    )
     stageIds: List[int] = attr.ib()
     status: str = attr.ib()
 
@@ -141,7 +149,9 @@ class StageTasks(Node):
 @attr.s(kw_only=True)
 class JobStages(Node):
     job: Job = attr.ib(converter=Job.create_from_dict)
-    stages: Dict[str, StageTasks] = attr.ib(converter=for_each(StageTasks.create_from_dict))
+    stages: Dict[str, StageTasks] = attr.ib(
+        converter=for_each(StageTasks.create_from_dict)
+    )
 
     def __str__(self):
         return f"JobStages metrics {id(self)}"
@@ -149,9 +159,12 @@ class JobStages(Node):
 
 @attr.s(kw_only=True)
 class ApplicationMetrics(Node):
-    executor_metrics: List[Executor] = attr.ib(converter=for_each(Executor.create_from_dict))
-    jobs_stages: Dict[str, JobStages] = attr.ib(converter=for_each(JobStages.create_from_dict))
+    executor_metrics: List[Executor] = attr.ib(
+        converter=for_each(Executor.create_from_dict)
+    )
+    jobs_stages: Dict[str, JobStages] = attr.ib(
+        converter=for_each(JobStages.create_from_dict)
+    )
 
     def __str__(self):
         return f"Application metrics {id(self)}"
-

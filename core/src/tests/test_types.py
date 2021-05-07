@@ -1,7 +1,15 @@
 import orjson
 import pytest
 
-from spark_logs.types import Job, Stage, Task, JobStages, StageTasks, ApplicationMetrics, Executor
+from spark_logs.types import (
+    Job,
+    Stage,
+    Task,
+    JobStages,
+    StageTasks,
+    ApplicationMetrics,
+    Executor,
+)
 
 
 @pytest.fixture

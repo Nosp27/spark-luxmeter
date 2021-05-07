@@ -74,7 +74,15 @@ from spark_logs.types import StageTasks, Stage, Node
 def test_shuffle_score(metrics, expected_skewness_test):
     stage = MagicMock()
     stage.__class__ = Node
-    nones = ["index", "attempt", "executorId", "host", "status", "taskLocality", "speculative"]
+    nones = [
+        "index",
+        "attempt",
+        "executorId",
+        "host",
+        "status",
+        "taskLocality",
+        "speculative",
+    ]
     tasks = [{none: None for none in nones}] * len(metrics)
     for tasks_el, metrics_el in zip(tasks, metrics):
         tasks_el.update(metrics_el)
