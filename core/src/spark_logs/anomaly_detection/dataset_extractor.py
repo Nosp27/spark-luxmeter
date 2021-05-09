@@ -32,7 +32,7 @@ class JobGroupedExtractor(DatasetExtractor):
         self._group_key_mapping = None
 
     def get_grouping_key(self, jdata: JobStages) -> str:
-        return ",".join([s.stage.name for s in jdata.stages.values()])
+        return ",".join(sorted([str(s.stage.numTasks) for s in jdata.stages.values()]))
 
     def get_short_group_key(self, group_key) -> str:
         return self.group_key_aliases[group_key]
@@ -47,7 +47,7 @@ class JobGroupedExtractor(DatasetExtractor):
     def group_key_aliases(self) -> Dict[str, str]:
         """Maps long key to short"""
         if self._group_key_mapping is None:
-            group_keys = [self.get_grouping_key(j) for j in self.jobs]
+            group_keys = {self.get_grouping_key(j) for j in self.jobs}
             self._group_key_mapping = {
                 group: f"job_group_{idx}" for idx, group in enumerate(group_keys)
             }
@@ -69,9 +69,7 @@ class JobGroupedExtractor(DatasetExtractor):
                 completionTime = job_data.job.completionTime
                 if completionTime is None:
                     continue
-                group_alias = self.get_short_group_key(
-                    self.get_grouping_key(job_data)
-                )
+                group_alias = self.get_short_group_key(self.get_grouping_key(job_data))
                 groups[group_alias].append(
                     JobGroupElement(
                         key=group_alias,
