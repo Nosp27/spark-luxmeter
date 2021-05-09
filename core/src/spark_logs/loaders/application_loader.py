@@ -1,8 +1,9 @@
 import asyncio
 import itertools
 import time
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Tuple, Set
 
+import numpy
 from aioredis import Redis
 
 from spark_logs import db, kvstore
@@ -20,7 +21,10 @@ class ApplicationLoader:
         self.redis: Optional[Redis] = None
         self.timeout = timeout
 
+        self.stored_job_ids: Set[int] = set()
+
     async def loop_update_app_metrics(self):
+        self.stored_job_ids = await self.load_stored_jobs()
         try:
             while True:
                 await self.update_app_metrics()
@@ -30,6 +34,16 @@ class ApplicationLoader:
 
             traceback.print_exc()
             raise
+
+    async def load_stored_jobs(self) -> Set[int]:
+        if self.redis is None:
+            self.redis = await db.connect_with_redis()
+        key = kvstore.sequential_jobs_key(app_id=self.app_id)
+        stored_job_ids = {
+            score
+            for _, score in await self.redis.zrevrangebyscore(key, withscores=True)
+        }
+        return stored_job_ids
 
     async def update_app_metrics(self):
         execution_timestamp = time.time()
@@ -45,7 +59,8 @@ class ApplicationLoader:
         jobs: List[Job] = await metrics_client.get_node_metrics(
             "jobs", application_id=self.app_id
         )
-        jobs_to_fetch: List[Job] = self.job_selector.select(jobs)
+
+        jobs_to_fetch: List[Job] = self.job_selector.select(jobs, self.stored_job_ids)
         jobs_stages_list: List[JobStages] = await asyncio.gather(
             *[self.fetch_for_job(job) for job in jobs_to_fetch]
         )
@@ -60,14 +75,23 @@ class ApplicationLoader:
     ):
         if self.redis is None:
             self.redis = await db.connect_with_redis()
-        value = fresh_metrics.dump()
+
+        running_jobs: Dict[str, JobStages] = dict()
+        completed_jobs: Dict[str, JobStages] = dict()
+        for job_id, job_data in fresh_metrics.jobs_stages.items():
+            if job_data.job.completionTime is None:
+                running_jobs[job_id] = job_data
+            else:
+                completed_jobs[job_id] = job_data
+        value = ApplicationMetrics(
+            executor_metrics=fresh_metrics.executor_metrics, jobs_stages=running_jobs
+        ).dump()
         await self.redis.zadd(self.app_id, execution_timestamp, value)
         args = list(
             itertools.chain.from_iterable(
                 [
                     (int(job_id), job_data.dump())
-                    for job_id, job_data in fresh_metrics.jobs_stages.items()
-                    if job_data.job.completionTime is not None
+                    for job_id, job_data in completed_jobs.items()
                 ]
             )
         )
@@ -78,6 +102,10 @@ class ApplicationLoader:
                 )
             except Exception as exc:
                 raise
+
+        self.stored_job_ids |= {
+            int(job_id) for job_id, job_data in fresh_metrics.jobs_stages.items()
+        }
 
     async def fetch_for_job(self, job: Job):
         stage_ids = job.stageIds
@@ -122,5 +150,12 @@ class JobSelector:
     def __init__(self, batch_size):
         self.batch_size = batch_size
 
-    def select(self, jobs_data: List[Job]):
-        return jobs_data[: self.batch_size]
+    def select(self, jobs_data: List[Job], stored_job_ids: Set[int]) -> List[Job]:
+        jobs_dict = {int(j.jobId): j for j in jobs_data}
+        job_ids_to_load = set(jobs_dict.keys()) - stored_job_ids
+
+        sorted_ids = reversed(sorted(job_ids_to_load))
+        to_load: List[Job] = [jobs_dict[i] for i in sorted_ids][: self.batch_size]
+
+        print("Selected: ", [x.jobId for x in to_load])
+        return to_load

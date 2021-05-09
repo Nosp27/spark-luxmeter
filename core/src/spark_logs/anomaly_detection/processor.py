@@ -1,6 +1,6 @@
 import asyncio
 from datetime import datetime
-from typing import List, Dict, Tuple, Type
+from typing import List, Dict, Tuple, Type, Set, Iterable
 
 import graphitesend
 import numpy as np
@@ -48,22 +48,22 @@ class DetectionProcessor:
                 else:
                     await asyncio.sleep(self.timeout)
                 print("Iteration")
-                last_score: int = int(await self.load_last_job_score(redis))
-                data = await redis.zrevrangebyscore(
-                    kvstore.sequential_jobs_key(app_id=self.app_id),
-                    min=last_score,
-                    exclude=redis.ZSET_EXCLUDE_BOTH,
-                    withscores=True,
-                    count=self._batch,
-                    offset=0,
-                )
+                reported_jobs: Set[int] = await self.load_reported_jobs(redis)
+
+                data = {score: job for job, score in await redis.zrevrangebyscore(
+                    kvstore.sequential_jobs_key(app_id=self.app_id), withscores=True
+                )}
                 if not data:
                     print("No data")
                     continue
                 print(f"Data: {len(data)} lines")
-                jobs_raw = [x[0] for x in data]
-                last_score = data[0][1]
-                jobs: List[JobStages] = [JobStages.from_json(d) for d in jobs_raw]
+
+                job_ids_to_process = sorted(data.keys() - reported_jobs)[-self._batch:]
+                print("Job ids: ", job_ids_to_process)
+
+                jobs: List[JobStages] = [
+                    JobStages.from_json(data[score]) for score in job_ids_to_process
+                ]
 
                 extractor = self.dataset_extractor_cls(
                     jobs, features=[StageRunTimeFeature(), StageShuffleReadFeature()],
@@ -73,7 +73,7 @@ class DetectionProcessor:
 
                 # grouped_predicts = await self.process_sequential_jobs(group_dataset, timestamps)
 
-                await self.save_last_job_score(redis, last_score)
+                await self.save_progress(redis, job_ids_to_process)
 
                 key_mapping = extractor.group_key_aliases
                 # for group_key, group_data in grouped_predicts.items():
@@ -99,24 +99,23 @@ class DetectionProcessor:
             raise
 
     def write_to_graphite(
-            self, key, data: np.array, timestamps: List[datetime], featurenames: List[str]
+        self, key, data: np.array, timestamps: List[datetime], featurenames: List[str]
     ):
         assert len(data.shape) == 2
-        assert data.shape[0] == 1
         data = data.reshape((data.shape[0], -1, len(featurenames)))
         data = np.where(data == None, 0, data).mean(axis=1)
         client = self.graphite_client
         for data_row, timestamp in zip(data, timestamps):
             client.send_dict(
                 {
-                    f"sequential.{key}.{feature_name}": feature_value
+                    f"sequential.3.{key}.{feature_name}": feature_value
                     for feature_name, feature_value in zip(featurenames, data_row)
                 },
                 int(timestamp.timestamp()),
             )
 
     async def process_sequential_jobs(
-            self, grouped_datasets, timestamps
+        self, grouped_datasets, timestamps
     ) -> Dict[str, List[Tuple[np.array, datetime]]]:
         detector = self.detector
         grouped_predicts = {
@@ -130,11 +129,18 @@ class DetectionProcessor:
             ret[group] = list(zip(predicts, timestamps))
         return ret
 
-    async def load_last_job_score(self, redis):
-        return int(
-            await redis.get(kvstore.latest_processed_job_id_key(app_id=self.app_id))
-            or 0
-        )
+    async def load_reported_jobs(self, redis) -> Set[int]:
+        key = kvstore.time_series_processed_jobs(app_id=self.app_id)
+        if not await redis.exists(key):
+            return set()
+        return {
+            int(x)
+            for x in await redis.smembers(key)
+        }
 
-    async def save_last_job_score(self, redis, score: int):
-        await redis.set(kvstore.latest_processed_job_id_key(app_id=self.app_id), score)
+    async def save_progress(self, redis, job_ids: Iterable[int]):
+        if not job_ids:
+            return
+        await redis.sadd(
+            kvstore.time_series_processed_jobs(app_id=self.app_id), *job_ids
+        )
