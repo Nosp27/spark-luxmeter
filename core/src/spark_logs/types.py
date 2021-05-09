@@ -129,7 +129,7 @@ class Task(Node):
     executorId: str = attr.ib()
     host: str = attr.ib()
     status: str = attr.ib()
-    duration: int = attr.ib()
+    duration: Optional[int] = attr.ib(default=None)
     taskLocality: str = attr.ib()
     speculative: bool = attr.ib()
     taskMetrics: Optional[Dict[str, Any]] = attr.ib(default=attr.Factory(dict))

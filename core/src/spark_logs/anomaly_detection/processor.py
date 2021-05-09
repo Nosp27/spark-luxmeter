@@ -17,7 +17,7 @@ from spark_logs.types import JobStages
 
 
 class DetectionProcessor:
-    def __init__(self, app_id, extractor_cls, detector, batch=5, timeout=10):
+    def __init__(self, app_id, extractor_cls, detector, batch=15, timeout=10):
         self.detector = detector
         self.timeout = timeout
         self.dataset_extractor_cls: Type[JobGroupedExtractor] = extractor_cls
