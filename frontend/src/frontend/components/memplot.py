@@ -51,20 +51,12 @@ class MemoryPlot(Component):
             "Shuffle": "skyblue",
         }
         for key, value in values.items():
-            fig.add_bar(x=timestamps, y=value, name=key, width=delays, marker_color=colors[key])
+            fig.add_bar(
+                x=timestamps, y=value, name=key, width=delays, marker_color=colors[key]
+            )
         fig.update_layout(
             barmode="relative",
             title_text="Memory consumption",
             transition_duration=500,
         )
         return fig
-
-    def add_callbacks(self, app):
-        @app.callback(
-            Output("mem-plot", "figure"),
-            Input("regenerate-btn", "n_clicks"),
-            Input("store", "data"),
-            prevent_initial_call=True,
-        )
-        def regenerate_button(_, data):
-            return self.random_figure()

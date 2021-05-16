@@ -1,0 +1,23 @@
+.custom-tabs {
+  text-transform: uppercase;
+  font-weight: 600;
+  font-size: 14px;
+  height: fit-content;
+  cursor: pointer;
+}
+
+.custom-tab {
+  letter-spacing: 1px;
+  color: inherit;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  height: 18px;
+}
+
+.custom-tab {
+  margin-right: 3px;
+}

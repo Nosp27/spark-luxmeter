@@ -7,7 +7,7 @@ import dash_html_components as html
 from frontend.components.abc import Component
 
 
-class TaskSummary(Component):
+class AppSummary(Component):
     def __init__(self):
         self.task_state = self.update_state()
 
@@ -18,12 +18,17 @@ class TaskSummary(Component):
         pass
 
     def plot(self):
-        return dbc.Container([
-            dbc.Row([
-                dbc.Col(dbc.Card([html.H2(f"{k}"), html.P(v)], body=True))
-                for k, v in self.task_state.items()
-            ]),
-        ], fluid=False)
+        return dbc.Container(
+            [
+                dbc.Row(
+                    [
+                        dbc.Col(dbc.Card([html.H2(f"{k}"), html.P(v)], body=True))
+                        for k, v in self.task_state.items()
+                    ]
+                ),
+            ],
+            fluid=False,
+        )
 
     def update_state(self):
         return dict(
