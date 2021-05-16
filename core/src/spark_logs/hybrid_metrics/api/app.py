@@ -16,7 +16,7 @@ async def client_for_app(request: aiohttp.web.Request):
     app = request.app
     try:
         app_id = request.query["app_id"]
-        metric_name = request.query["metric_name"]
+        metric_name = request.query.get("metric_name") or "skewness_score"
         processor = app["METRIC_PROCESSORS"][metric_name]()
     except KeyError as exc:
         raise http_exceptions.HttpBadRequest("No key " + str(exc))

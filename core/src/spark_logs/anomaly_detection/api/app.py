@@ -19,7 +19,7 @@ async def client_for_app(request: aiohttp.web.Request):
     app = request.app
     try:
         app_id = request.query["app_id"]
-        metric_name = request.query["metric_name"]
+        metric_name = request.query.get("metric_name") or "iforest_processor"
         processor = app["METRIC_PROCESSORS"][metric_name](
             app_id, JobGroupedExtractor, IForestDetector()
         )

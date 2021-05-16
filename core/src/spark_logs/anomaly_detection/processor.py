@@ -50,15 +50,18 @@ class DetectionProcessor:
                 print("Iteration")
                 reported_jobs: Set[int] = await self.load_reported_jobs(redis)
 
-                data = {score: job for job, score in await redis.zrevrangebyscore(
-                    kvstore.sequential_jobs_key(app_id=self.app_id), withscores=True
-                )}
+                data = {
+                    score: job
+                    for job, score in await redis.zrevrangebyscore(
+                        kvstore.sequential_jobs_key(app_id=self.app_id), withscores=True
+                    )
+                }
                 if not data:
                     print("No data")
                     continue
                 print(f"Data: {len(data)} lines")
 
-                job_ids_to_process = sorted(data.keys() - reported_jobs)[-self._batch:]
+                job_ids_to_process = sorted(data.keys() - reported_jobs)[-self._batch :]
                 print("Job ids: ", job_ids_to_process)
 
                 jobs: List[JobStages] = [
@@ -133,10 +136,7 @@ class DetectionProcessor:
         key = kvstore.time_series_processed_jobs(app_id=self.app_id)
         if not await redis.exists(key):
             return set()
-        return {
-            int(x)
-            for x in await redis.smembers(key)
-        }
+        return {int(x) for x in await redis.smembers(key)}
 
     async def save_progress(self, redis, job_ids: Iterable[int]):
         if not job_ids:
