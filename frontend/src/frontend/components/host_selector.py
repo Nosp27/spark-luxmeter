@@ -40,16 +40,10 @@ class HostSelector(Component):
                     style=dict(margin="10px", display="block"),
                     children=[
                         dbc.Button(
-                            "✓",
-                            outline=True,
-                            color="success",
-                            id="host-confirm-btn",
+                            "✓", outline=True, color="success", id="host-confirm-btn",
                         ),
                         dbc.Button(
-                            "✕",
-                            outline=True,
-                            color="danger",
-                            id="host-reject-btn",
+                            "✕", outline=True, color="danger", id="host-reject-btn",
                         ),
                     ],
                 ),
@@ -127,10 +121,12 @@ class HostSelector(Component):
             Input("host-accept-buttons", "style"),
             Input("hostname-info", "data"),
         )
-        def fill_and_verdict_host_cb(_, __, hostname_input, hostname_style, btns_style, valid_hostname):
-            trigger_id, trigger_option = [p["prop_id"] for p in dash.callback_context.triggered][
-                0
-            ].split(".")
+        def fill_and_verdict_host_cb(
+            _, __, hostname_input, hostname_style, btns_style, valid_hostname
+        ):
+            trigger_id, trigger_option = [
+                p["prop_id"] for p in dash.callback_context.triggered
+            ][0].split(".")
 
             show_alert = dash.no_update
             alert_content = dash.no_update
@@ -139,12 +135,19 @@ class HostSelector(Component):
             hidden_tabs = dash.no_update
 
             if "yarn-hostname" == trigger_id and trigger_option == "value":
-                hostname_input_validated, hostname_style, show_alert, alert_content, btns_style = fill_host(
-                    hostname_input, hostname_style, btns_style
-                )
+                (
+                    hostname_input_validated,
+                    hostname_style,
+                    show_alert,
+                    alert_content,
+                    btns_style,
+                ) = fill_host(hostname_input, hostname_style, btns_style)
             elif trigger_id in ("host-confirm-btn", "host-reject-btn"):
                 btns_style, hostname_output = confirm_host(
-                    btns_style, hostname_input, trigger_id == "host-confirm-btn", valid_hostname
+                    btns_style,
+                    hostname_input,
+                    trigger_id == "host-confirm-btn",
+                    valid_hostname,
                 )
                 if not hostname_output:
                     hidden_tabs = True
@@ -163,7 +166,8 @@ class HostSelector(Component):
         # Select applications
 
         @app.callback(
-            Output("store", "data"),
+            Output("selected-app-info", "data"),
+            Input("selected-app-info", "data"),
             Input("app-list", "value"),
             prevent_initial_call=True,
         )

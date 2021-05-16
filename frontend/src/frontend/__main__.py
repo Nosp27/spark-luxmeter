@@ -76,11 +76,12 @@ if __name__ == "__main__":
                             ),
                         ],
                     )
-                ]
+                ],
             ),
-            dcc.Store(id="store", data=dict()),
+            dcc.Store(id="selected-app-info", data=dict()),
             dcc.Store(id="hostname-info", data=""),
-            dcc.Interval(id="interval", interval=30),
+            dcc.Store(id="app-list-info", data=[]),
+            dcc.Interval(id="interval", interval=3000),
         ]
     )
 

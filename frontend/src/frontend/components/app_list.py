@@ -1,13 +1,11 @@
 import random
-import re
 from datetime import datetime, timedelta
 
 import dash_bootstrap_components as dbc
 import dash_core_components as dcc
 import dash_html_components as html
-import orjson
-import dash
 from dash.dependencies import Output, Input, State
+from dash.exceptions import PreventUpdate
 
 from frontend.components import rest_api
 from frontend.components.abc import Component
@@ -36,10 +34,7 @@ class TaskList(Component):
                         display="flex", justifyContent="flex-start", alignItems="center"
                     ),
                     children=[
-                        html.P(
-                            "Applications",
-                            style=dict(margin="10px"),
-                        ),
+                        html.P("Applications", style=dict(margin="10px"),),
                         dcc.Dropdown(
                             style=dict(width="700px"),
                             id="app-list",
@@ -54,6 +49,12 @@ class TaskList(Component):
                             clearable=False,
                             value=tasks[0][1],
                         ),
+                        dbc.Alert(
+                            id="app-list-alert",
+                            style=dict(margin="15px"),
+                            color="danger",
+                            is_open=False,
+                        ),
                     ],
                 ),
             ]
@@ -61,18 +62,18 @@ class TaskList(Component):
 
     def add_callbacks(self, app):
         @app.callback(
-            Input("interval", "value"),
-            State("hostname-info", "data"),
             Output("app-list-info", "data"),
-            Output("app-list-alert", "value"),
+            Output("app-list-alert", "children"),
             Output("app-list-alert", "is_open"),
+            Input("interval", "n_intervals"),
+            State("hostname-info", "data"),
         )
         def load_app_list(_, hostname_info):
             if not hostname_info:
                 return [], "", False
             apps = []
             try:
-                apps = rest_api.load_app_list()
+                apps = rest_api.load_app_list()["applications"]
             except Exception as exc:
                 # Alert
                 alert_mode = True
@@ -81,3 +82,13 @@ class TaskList(Component):
                 alert_mode = False
                 alert_text = ""
             return apps, alert_text, alert_mode
+
+        @app.callback(
+            Output("app-list", "options"), Input("app-list-info", "data"),
+        )
+        def render_app_list(app_list_info):
+            if not app_list_info:
+                raise PreventUpdate
+            return [
+                dict(label=f"{x} by since", value=x, title=x,) for x in app_list_info
+            ]
