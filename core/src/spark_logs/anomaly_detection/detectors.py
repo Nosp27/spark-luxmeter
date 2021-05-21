@@ -1,5 +1,7 @@
 import pickle
 from abc import abstractmethod
+
+import orjson
 from keras.models import load_model
 
 import numpy
@@ -63,7 +65,17 @@ class IForestDetector(Model):
 class AutoencoderDetector(Model):
     model_name = "autoencoder"
     support_iterative_fit = True
-    chunk_size = 3
+    chunk_size = 15
+
+    def __init__(self):
+        super().__init__()
+        self.fitted = False
+        self.mean = None
+        self.std = None
+
+    @property
+    def ready(self):
+        return super().ready and self.fitted
 
     def _create_model(self, arr):
         model = Sequential(
@@ -105,26 +117,55 @@ class AutoencoderDetector(Model):
         model.compile(optimizer=optimizers.Adam(learning_rate=0.002), loss="mse")
         self.model = model
 
-    def _fit(self, arr):
+    def _normalize(self, arr):
+        self.mean = self.mean or arr.mean(axis=0)
+        self.std = self.std or arr.std(axis=0)
+        return (arr - self.mean) / self.std
+
+    def _transform(self, arr, *, allow_refill, refill_max_part=0.5):
         numrows = arr.shape[0]
-        truncated_numrows = (numrows - (numrows % self.chunk_size))
-        if numrows < self.chunk_size:
-            raise RuntimeError("Too small dataset")
-        x_train = arr[:truncated_numrows].reshape(-1, self.chunk_size, 1)
+        refill_numrows = (self.chunk_size - (numrows % self.chunk_size))
+        if allow_refill and refill_numrows / self.chunk_size < refill_max_part:
+            refill_sample = numpy.median(arr, axis=0)
+            refilled_arr = numpy.vstack([arr] + [refill_sample] * refill_numrows)
+            sizematched_array = refilled_arr
+        else:
+            refill_numrows = 0
+            truncate_numrows = numrows - (numrows % self.chunk_size)
+            sizematched_array = arr[:truncate_numrows]
+        return sizematched_array.reshape(-1, self.chunk_size, arr.shape[1]), refill_numrows
+
+    def _fit(self, arr):
+        arr_n = self._normalize(arr)
+        x_train, refill = self._transform(arr_n, allow_refill=True, refill_max_part=0.2)
         if not self.ready:
             self._create_model(x_train)
         self.model.fit(
-            x_train, x_train, epochs=128, batch_size=3, validation_split=0.1,
+            x_train, x_train, epochs=128, batch_size=3, validation_split=0.1, verbose=0
         )
         print(f"Fit done: {x_train.shape}")
+        self.fitted = True
 
-    def detect_anomalies(self, arr) -> numpy.array:
-        return self.model.predict(arr)
+    def detect_anomalies(self, arr) -> numpy.ndarray:
+        if not self.ready:
+            raise RuntimeError("Model is not ready")
+        arr_n = self._normalize(arr)
+        x, refill = self._transform(arr_n, allow_refill=True, refill_max_part=1.0)
+        pred = self.model.predict(x)
+        pred_truncated = pred.reshape((-1,))[:-refill]
+        print("Predict done")
+        return pred_truncated
+
+    def target(self, arr) -> numpy.ndarray:
+        arr_n = self._normalize(arr)
+        return numpy.percentile(arr_n, 95, axis=1)
 
     def save(self, filename):
         filepath = "/tmp/" + filename + ".h5"
         self.model.save(filepath)
-        return filepath
+        return orjson.dumps((filepath, self.mean, self.std), option=orjson.OPT_SERIALIZE_NUMPY)
 
-    def load(self, filepath):
+    def load(self, data):
+        filepath, self.mean, self.std = orjson.loads(data)
         self.model = load_model(filepath)
+        self.fitted = True
