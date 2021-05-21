@@ -7,9 +7,8 @@ from aiohttp import web
 
 from spark_logs import db
 from spark_logs.anomaly_detection.dataset_extractor import JobGroupedExtractor
-from spark_logs.anomaly_detection.iforest_detector import IForestDetector
-from spark_logs.anomaly_detection.processor import DetectionProcessor
-from spark_logs.hybrid_metrics import skewness_score
+from spark_logs.anomaly_detection.detectors import AutoencoderDetector
+from spark_logs.anomaly_detection.processor import SequentialDetector, SequentialJobsFitter
 
 routes = web.RouteTableDef()
 
@@ -20,17 +19,23 @@ async def client_for_app(request: aiohttp.web.Request):
     try:
         app_id = request.query["app_id"]
         metric_name = request.query.get("metric_name") or "iforest_processor"
-        processor = app["METRIC_PROCESSORS"][metric_name](
-            app_id, JobGroupedExtractor, IForestDetector()
+        detector_factory, fitter_factory = app["METRIC_PROCESSORS"][metric_name]
+        detector = detector_factory(
+            app_id, JobGroupedExtractor, detector_cls=AutoencoderDetector
+        )
+        fitter = fitter_factory(
+            app_id, JobGroupedExtractor, detector_cls=AutoencoderDetector, timeout=120,
         )
     except KeyError as exc:
         raise http_exceptions.HttpBadRequest("No key " + str(exc))
     redis = app["REDIS"]
-    task = asyncio.create_task(processor.loop_process(redis))
+    task_f = asyncio.create_task(fitter.loop_process(redis))
+    task_p = asyncio.create_task(detector.loop_process(redis))
 
     app["APP_METRICS"][app_id][metric_name] = {
-        "processor": processor,
-        "task": task,
+        "processors": (fitter, detector),
+        "task_f": task_f,
+        "task_p": task_p,
     }
 
     return aiohttp.web.json_response({"status": "created new processor"})
@@ -79,7 +84,7 @@ async def create_redis_connection(app):
 def start():
     app = aiohttp.web.Application(middlewares=[aiohttp.web.normalize_path_middleware()])
     app["METRIC_PROCESSORS"] = {
-        "iforest_processor": DetectionProcessor,
+        "sequential_processor": (SequentialDetector, SequentialJobsFitter),
     }
     app["APP_METRICS"] = defaultdict(dict)
     app.router.add_routes(routes)

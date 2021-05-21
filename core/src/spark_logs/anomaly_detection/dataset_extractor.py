@@ -30,6 +30,7 @@ class JobGroupedExtractor(DatasetExtractor):
         self.jobs: List[JobStages] = jobs
         self._job_groups = None
         self._group_key_mapping = None
+        self._group_long_aliases = None
 
     def get_grouping_key(self, jdata: JobStages) -> str:
         return ",".join(sorted([str(s.stage.numTasks) for s in jdata.stages.values()]))
@@ -53,6 +54,15 @@ class JobGroupedExtractor(DatasetExtractor):
             }
 
         return self._group_key_mapping
+
+    @property
+    def group_long_aliases(self) -> Dict[str, str]:
+        """Maps long key to short"""
+        if self._group_long_aliases is None:
+            self._group_long_aliases = dict(
+                zip(self.group_key_aliases.values(), self.group_key_aliases.keys())
+            )
+        return self._group_long_aliases
 
     def extract(self) -> Dict[str, np.array]:
         groups = self.get_groups()

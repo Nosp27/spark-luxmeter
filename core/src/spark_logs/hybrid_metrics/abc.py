@@ -4,6 +4,7 @@ from typing import Dict, List
 
 from aioredis import Redis
 
+from spark_logs import kvstore
 from spark_logs.types import ApplicationMetrics, JobStages, StageTasks
 
 
@@ -43,6 +44,8 @@ class HybridMetricStrategy(abc.ABC):
                 )
 
     async def write_stage_test(self, redis: Redis, app_id, stage_id, test_result):
-        key = f"{app_id}:{stage_id}:{self.test_name}"
+        key = kvstore.hybrid_metric_key(
+            app_id=app_id, metric_name=self.test_name, job_id=stage_id
+        )
         if not await redis.exists(key):
             await redis.set(key, test_result)

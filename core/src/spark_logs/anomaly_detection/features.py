@@ -15,9 +15,14 @@ class Feature:
 
 class StageFeature(Feature):
     def apply(self, stage_data: StageTasks) -> Union[int, float]:
-        return self.common(stage_data.stage) or self.tasks(
-            list(stage_data.tasks.values())
-        )
+        result = self.common(stage_data.stage)
+        if result is None:
+            result = self.tasks(
+                list(stage_data.tasks.values())
+            )
+        if result is None:
+            print("N")
+        return result
 
     @abc.abstractmethod
     def common(self, common: Stage):
