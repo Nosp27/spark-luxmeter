@@ -11,7 +11,7 @@ components = dict(
     host_selector=HostSelector(),
     mem_plot=MemoryPlot(),
     task_selector=TaskList(),
-    tasks_summary=AppSummary(),
+    tasks_summary=AppSummary(uid="tasks-summary"),
     configuration=ConfigurationPage(),
 )
 
@@ -39,7 +39,7 @@ def create_components():
                                 id="data-for-known-app",
                                 children=[
                                     components["mem_plot"].random_plot(),
-                                    components["tasks_summary"].plot(),
+                                    components["tasks_summary"].render(),
                                 ],
                             ),
                         ],

@@ -4,9 +4,12 @@ from datetime import datetime, timedelta
 import dash_bootstrap_components as dbc
 import dash_core_components as dcc
 import dash_html_components as html
+import orjson
+import requests
 from dash.dependencies import Output, Input, State
 from dash.exceptions import PreventUpdate
 
+from frontend import kvstore
 from frontend.components import rest_api
 from frontend.components.abc import Component
 
@@ -46,6 +49,7 @@ class TaskList(Component):
                                 )
                                 for task_title, task_id, task_owner, task_start_time in tasks
                             ],
+                            searchable=True,
                             clearable=False,
                             value=tasks[0][1],
                         ),
@@ -92,3 +96,33 @@ class TaskList(Component):
             return [
                 dict(label=f"{x} by since", value=x, title=x,) for x in app_list_info
             ]
+
+        # Select applications
+        @app.callback(
+            Output("selected-app-info", "data"),
+            Input("app-list", "value"),
+            prevent_initial_call=True,
+        )
+        def select_application(app_id):
+            try:
+                app_metrics_json = kvstore.client.zrevrangebyscore(
+                    app_id, min="-inf", max="+inf", num=1, start=0
+                )
+            except requests.RequestException:
+                app_metrics_json = None
+            try:
+                raise requests.RequestException()
+                # hybrid_metrics_json = kvstore.client.zrevrangebyscore(
+                #     f"hm:{app_id}:{job_id}:{metric_name}"
+                # )
+            except requests.RequestException:
+                hybrid_metrics_json = None
+            if app_metrics_json:
+                app_metrics_json = orjson.loads(app_metrics_json[0])
+            if hybrid_metrics_json:
+                hybrid_metrics_json = None
+            return dict(
+                app_id=app_id,
+                app_metrics_json=app_metrics_json,
+                hybrid_metrics_json=hybrid_metrics_json,
+            )

@@ -179,7 +179,7 @@ def build_top_panel(metrics_data):
                                     generate_metric_row_helper(
                                         [x[1] for x in data["datapoints"]],
                                         [x[0] for x in data["datapoints"]],
-                                        f"metric-{idx}"
+                                        f"metric-{idx}",
                                     )
                                     for idx, data in enumerate(metrics_data)
                                 ],
@@ -354,17 +354,16 @@ app.layout = html.Div(
 )
 def render_tab_content(tab_switch, store):
     if tab_switch == "tab1":
-        return build_tab_1(),
-    return html.Div(
-        id="status-container",
-        children=[
-            build_quick_stats_panel(),
-            html.Div(
-                id="graphs-container",
-                children=[build_top_panel(store)],
-            ),
-        ],
-    ),
+        return (build_tab_1(),)
+    return (
+        html.Div(
+            id="status-container",
+            children=[
+                build_quick_stats_panel(),
+                html.Div(id="graphs-container", children=[build_top_panel(store)],),
+            ],
+        ),
+    )
 
 
 # Update interval
@@ -455,9 +454,7 @@ def show_current_specs(n_clicks, dd_select, store_data):
 # decorator for list of output
 def create_callback(param):
     def callback(stored_data):
-        count, indicator = update_count(
-            stored_data
-        )
+        count, indicator = update_count(stored_data)
         return count, spark_line_data, indicator
 
     return callback

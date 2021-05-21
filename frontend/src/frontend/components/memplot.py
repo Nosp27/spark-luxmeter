@@ -4,13 +4,20 @@ from datetime import datetime, timedelta
 import dash_core_components as dcc
 import dash_html_components as html
 import plotly.graph_objects as go
-
 from dash.dependencies import Output, Input
+from dash.exceptions import PreventUpdate
 
+from frontend import graphitestore
 from frontend.components.abc import Component
 
 
 class MemoryPlot(Component):
+    mem_keys_mapping = {
+        "stats_counts.response.200": "Free",
+        "stats_counts.response.302": "GC",
+        "stats_counts.response.404": "Shuffle",
+    }
+
     def __init__(self):
         self.figure = None
 
@@ -27,7 +34,7 @@ class MemoryPlot(Component):
         sample_data["Free"] = [
             25 - s - g for s, g in zip(sample_data["Shuffle"], sample_data["GC"])
         ]
-        return deltas, sample_data
+        return sample_data, deltas
 
     def random_plot(self):
         return self.compose_layout(*self.generate_sample_data())
@@ -39,7 +46,8 @@ class MemoryPlot(Component):
         self.figure = self.compose_figure(timestamps, values)
         return html.Div(children=dcc.Graph(id="mem-plot", figure=self.figure))
 
-    def compose_figure(self, timestamps, values):
+    def compose_figure(self, values, timestamps):
+        # assert all(k in values for k in self.mem_keys)
         delays = [
             (timestamps[i + 1] - timestamps[i]).total_seconds() * 1000
             for i in range(len(timestamps) - 1)
@@ -60,3 +68,20 @@ class MemoryPlot(Component):
             transition_duration=500,
         )
         return fig
+
+    def add_callbacks(self, app):
+        @app.callback(
+            Output("mem-plot", "figure"), Input("selected-app-info", "data"),
+        )
+        def update_memplot(selected_app_data):
+            if not selected_app_data:
+                raise PreventUpdate
+            client = graphitestore.client
+            metrics, timestamps = client.load(
+                list(self.mem_keys_mapping.values()),
+                since="now-10d",
+                until="now-8d",
+                interpolation=True,
+            )
+            metrics = {self.mem_keys_mapping[k]: v for k, v in metrics.items()}
+            return self.compose_figure(metrics, timestamps)

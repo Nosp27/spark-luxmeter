@@ -162,15 +162,3 @@ class HostSelector(Component):
                 alert_content,
                 hidden_tabs,
             )
-
-        # Select applications
-
-        @app.callback(
-            Output("selected-app-info", "data"),
-            Input("selected-app-info", "data"),
-            Input("app-list", "value"),
-            prevent_initial_call=True,
-        )
-        def select_application(data, value):
-            data["app_id"] = value
-            return data
