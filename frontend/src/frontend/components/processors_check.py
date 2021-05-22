@@ -1,3 +1,5 @@
+import itertools
+
 import dash
 import requests
 from dash.dependencies import Output, Input
@@ -74,12 +76,13 @@ class ProcessorChecks(Component):
 
     def add_callbacks(self, app):
         @app.callback(
+            Output("applications-actually-processing", "data"),
             Output("processors-checks-dashboard", "children"),
             Input("service-check-interval", "n_intervals"),
         )
         def ls_processors(n):
             if n and n % 10 != 0:
-                return dash.no_update
+                return dash.no_update, dash.no_update
 
             services_config = DEFAULT_CONFIG["services"]
             total_data = dict()
@@ -100,4 +103,8 @@ class ProcessorChecks(Component):
                 anomaly_detector_processors = dict()
             total_data["anomaly_detector"] = anomaly_detector_processors
 
-            return self._render_loader_checks(total_data)
+            applications_actually_processing = {
+                app_id for app_id in itertools.chain.from_iterable(total_data.values()) if app_id.startswith("application_")
+            }
+
+            return tuple(applications_actually_processing), self._render_loader_checks(total_data)

@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import dash_core_components as dcc
 import dash_html_components as html
 import plotly.graph_objects as go
+import requests
 from dash.dependencies import Output, Input
 from dash.exceptions import PreventUpdate
 
@@ -77,11 +78,14 @@ class MemoryPlot(Component):
             if not selected_app_data:
                 raise PreventUpdate
             client = graphitestore.client
-            metrics, timestamps = client.load(
-                list(self.mem_keys_mapping.values()),
-                since="now-10d",
-                until="now-8d",
-                interpolation=True,
-            )
+            try:
+                metrics, timestamps = client.load(
+                    list(self.mem_keys_mapping.values()),
+                    since="now-10d",
+                    until="now-8d",
+                    interpolation=True,
+                )
+            except requests.exceptions.RequestException as exc:
+                metrics, timestamps = dict(), []
             metrics = {self.mem_keys_mapping[k]: v for k, v in metrics.items()}
             return self.compose_figure(metrics, timestamps)

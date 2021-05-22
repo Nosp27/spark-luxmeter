@@ -23,7 +23,9 @@ class ConfigurationPage(Component):
 
     def render(self):
         return html.Div(
-            children=[self._create_app_selector([]), self.serivce_check.render(), self.processor_check.render()],
+            children=[
+                self._create_app_selector([]), self.serivce_check.render(), self.processor_check.render(), dcc.Store(id="processing-applications-info")
+            ],
             style={"display": "flex"},
         )
 
@@ -38,12 +40,14 @@ class ConfigurationPage(Component):
 
     def add_callbacks(self, app):
         @app.callback(
+            Output("processing-applications-info", "data"),
             Output("applications-checklist", "value"),
             Input("applications-checklist", "value"),
+            Input("processing-applications-info", "data"),
+            Input("applications-actually-processing", "data")
         )
-        def toggle_selection(list_selected):
-            if not list_selected:
-                return dash.no_update
+        def toggle_selection(list_selected, processing_app_list, actually_processing):
+            list_selected = list_selected or []
             set_selected = set(list_selected)
             new_selected = set_selected - self.old_selected
             new_deselected = self.old_selected - set_selected
@@ -57,21 +61,24 @@ class ConfigurationPage(Component):
                 except requests.RequestException as exc:
                     pass
 
+            removed = set()
             for el in new_deselected:
                 try:
                     rest_api.toggle_app(el, on=False)
+                    removed.add(el)
                     result_selected.remove(el)
                 except requests.RequestException as exc:
                     pass
 
+            result_selected.update(set(actually_processing) - removed)
             self.old_selected = result_selected
 
-            return tuple(result_selected)
+            return tuple(result_selected), tuple(result_selected)
 
         @app.callback(
-            Output("applications-checklist", "options"), Input("app-list-info", "data"),
+            Output("applications-checklist", "options"), Input("app-list-info", "data")
         )
-        def refresh_application_list(apps):
+        def refresh_application_checklist(apps):
             if not apps:
                 return dash.no_update
             app_data = [{"label": a, "value": a} for a in apps]

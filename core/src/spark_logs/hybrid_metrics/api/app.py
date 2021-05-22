@@ -31,7 +31,7 @@ async def client_for_app(request: aiohttp.web.Request):
     return aiohttp.web.json_response({"status": "created new processor"})
 
 
-@routes.post("/metric/rm")
+@routes.post("/metric/rm_proc")
 async def rm_metric_for_app(request: aiohttp.web.Request):
     app = request.app
     try:
@@ -49,7 +49,7 @@ async def rm_metric_for_app(request: aiohttp.web.Request):
     return aiohttp.web.json_response({"status": "Deleted processor"})
 
 
-@routes.post("/metric/rm_app")
+@routes.post("/metric/rm")
 async def rm_metrics_for_app(request: aiohttp.web.Request):
     app = request.app
     try:

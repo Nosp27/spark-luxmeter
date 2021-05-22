@@ -29,7 +29,7 @@ class ServiceCheck(Component):
                     children=[],
                     style={"width": "400px"},
                 ),
-                dcc.Interval("service-check-interval", interval=1000),
+                dcc.Interval("service-check-interval", interval=300),
             ],
             style={"margin": "30px"},
         )

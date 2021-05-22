@@ -32,9 +32,7 @@ def create_components():
                     html.Div(
                         id="data-for-known-host",
                         children=[
-                            components["task_selector"].render(
-                                components["task_selector"].generate_sample_data()
-                            ),
+                            components["task_selector"].render(),
                             html.Div(
                                 id="data-for-known-app",
                                 children=[
@@ -81,6 +79,7 @@ if __name__ == "__main__":
             dcc.Store(id="selected-app-info", data=dict()),
             dcc.Store(id="hostname-info", data=""),
             dcc.Store(id="app-list-info", data=[]),
+            dcc.Store(id="applications-actually-processing", data=[]),
             dcc.Interval(id="interval", interval=3000),
         ]
     )

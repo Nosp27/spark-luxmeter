@@ -19,17 +19,9 @@ class TaskList(Component):
         self.tasks = None
 
     def generate_sample_data(self, size=10):
-        return [
-            (
-                f"Task_{i}",
-                f"task_{i}",
-                "nosp27",
-                datetime.now() - timedelta(seconds=random.randint(120, 600)),
-            )
-            for i in range(size)
-        ]
+        return []
 
-    def render(self, tasks):
+    def render(self):
         return html.Div(
             children=[
                 html.Div(
@@ -41,17 +33,9 @@ class TaskList(Component):
                         dcc.Dropdown(
                             style=dict(width="700px"),
                             id="app-list",
-                            options=[
-                                dict(
-                                    label=f"{task_title} by {task_owner} since {task_start_time}",
-                                    value=task_id,
-                                    title=task_id,
-                                )
-                                for task_title, task_id, task_owner, task_start_time in tasks
-                            ],
+                            options=[],
                             searchable=True,
                             clearable=False,
-                            value=tasks[0][1],
                         ),
                         dbc.Alert(
                             id="app-list-alert",
@@ -91,7 +75,7 @@ class TaskList(Component):
             return apps, alert_text, alert_mode
 
         @app.callback(
-            Output("app-list", "options"), Input("app-list-info", "data"),
+            Output("app-list", "options"), Input("processing-applications-info", "data"),
         )
         def render_app_list(app_list_info):
             if not app_list_info:

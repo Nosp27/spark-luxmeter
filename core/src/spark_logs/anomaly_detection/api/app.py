@@ -109,6 +109,9 @@ async def rm_metrics_for_app(request: aiohttp.web.Request):
         for x in tasks:
             x.cancel()
         total_tasks_closed += len(tasks)
+
+    del app["APP_METRICS"][app_id]
+
     return aiohttp.web.json_response({"status": f"Deleted processors for {app_id}. Closed {total_tasks_closed} tasks"})
 
 

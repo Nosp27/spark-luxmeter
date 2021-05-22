@@ -1,14 +1,8 @@
 import requests
 
-loader_endpoint = "http://localhost:8001"
-hybtid_metrics_endpoint = "http://localhost:10111"
-anomaly_detection_endpoint = "http://localhost:10000"
+from spark_logs.config import DEFAULT_CONFIG
 
-
-def load_app_list():
-    response = requests.get("/".join([loader_endpoint, "client", "list_apps"]))
-    response.raise_for_status()
-    return response.json()
+services_config = DEFAULT_CONFIG["services"]
 
 
 def toggle_app(app_id, on=True):
@@ -18,7 +12,7 @@ def toggle_app(app_id, on=True):
 def _toggle_loader(app_id, on):
     command = "create" if on else "rm"
     response = requests.post(
-        "/".join([loader_endpoint, "client", command]),
+        "/".join([services_config["loader"]["endpoint"], "client", command]),
         params={"app_id": app_id},
         timeout=3,
     )
@@ -27,10 +21,10 @@ def _toggle_loader(app_id, on):
 
 
 def _toggle_anomaly_detection(app_id, on):
-    command = "create" if on else "rm_app"
+    command = "create" if on else "rm"
     response = requests.post(
-        "/".join([loader_endpoint, "detector", command]),
-        params={"app_id": app_id},
+        "/".join([services_config["anomaly_detector"]["endpoint"], "detector", command]),
+        params={"app_id": app_id, "metric_name": "sequential_processor"},
         timeout=3,
     )
     response.raise_for_status()
@@ -38,9 +32,9 @@ def _toggle_anomaly_detection(app_id, on):
 
 
 def _toggle_hybrid_metrics(app_id, on):
-    command = "create" if on else "rm_app"
+    command = "create" if on else "rm"
     response = requests.post(
-        "/".join([loader_endpoint, "metric", command]),
+        "/".join([services_config["hybrid_metrics"]["endpoint"], "metric", command]),
         params={"app_id": app_id},
         timeout=3,
     )
