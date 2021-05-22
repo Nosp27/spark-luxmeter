@@ -13,17 +13,23 @@ from spark_logs.loaders.application_loader import AppIdsLoader
 routes = web.RouteTableDef()
 
 
-@routes.get("/hello")
+@routes.get("/")
 async def hello(request):
     return web.json_response({"status": "healthy"})
 
 
-@routes.get("/client/list_apps")
-async def client_for_app(request: aiohttp.web.Request):
-    redis: Redis = request.app["REDIS"]
-    applications = await redis.zrevrangebyscore(kvstore.applications_key())
-    applications = [app.decode() for app in applications]
-    return web.json_response({"applications": applications})
+@routes.get("/client/ls")
+async def ls_tasks(request: aiohttp.web.Request):
+    loaders = request.app["LOADERS"]
+    tasks = request.app["LOADER_TASKS"]
+    app_loaders = dict()
+    for app_id, loader in loaders.items():
+        task: asyncio.Task = tasks[app_id]
+        status = "running"
+        if task.cancelled():
+            status = "cancelled"
+        app_loaders[app_id] = {loader.name: {"task": status}}
+    return web.json_response({"applications": app_loaders})
 
 
 @routes.post("/client/create")

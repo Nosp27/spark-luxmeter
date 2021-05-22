@@ -77,7 +77,10 @@ class TaskList(Component):
                 return [], "", False
             apps = []
             try:
-                apps = rest_api.load_app_list()["applications"]
+                apps_raw = kvstore.client.zrangebyscore(
+                    "applications", min=-float("inf"), max=float("inf")
+                )
+                apps = [a.decode() for a in apps_raw]
             except Exception as exc:
                 # Alert
                 alert_mode = True

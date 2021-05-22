@@ -5,7 +5,7 @@ from frontend import app
 from frontend.components import MemoryPlot, AppSummary, TaskList
 from frontend.components.configuration import ConfigurationPage
 from frontend.components.host_selector import HostSelector
-
+from frontend.components.service_checks import ServiceCheck
 
 components = dict(
     host_selector=HostSelector(),

@@ -13,6 +13,30 @@ from spark_logs.anomaly_detection.processor import SequentialDetector, Sequentia
 routes = web.RouteTableDef()
 
 
+@routes.get("/")
+async def hello(request):
+    return web.json_response({"status": "healthy"})
+
+
+@routes.get("/client/ls")
+async def ls_tasks(request: aiohttp.web.Request):
+    def task_status(task_entry):
+        task_name, task = task_entry
+        status = "running"
+        if task.cancelled():
+            status = "cancelled"
+        return status
+
+    processors = request.app["APP_METRICS"]
+    app_processors = defaultdict(dict)
+    for app_id in processors:
+        metrics = processors[app_id]
+        for metric_name, metric_tasks in metrics.items():
+            tasks = dict(zip(["task_fit", "task_predict", "task_bypass"], map(task_status, list(metric_tasks.items())[1:])))
+            app_processors[app_id][metric_name] = tasks
+    return web.json_response({"applications": app_processors})
+
+
 @routes.post("/detector/create")
 async def client_for_app(request: aiohttp.web.Request):
     app = request.app

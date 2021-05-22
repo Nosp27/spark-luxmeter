@@ -3,7 +3,6 @@ import itertools
 import time
 from typing import Optional, List, Dict, Tuple, Set
 
-import numpy
 from aioredis import Redis
 
 from spark_logs import db, kvstore
@@ -12,6 +11,8 @@ from spark_logs.types import Executor, Job, StageTasks, JobStages, ApplicationMe
 
 
 class ApplicationLoader:
+    name = "application_loader"
+
     def __init__(
         self, metrics_client: MetricsClient, app_id, fetch_last_jobs, timeout=10
     ):
@@ -127,6 +128,8 @@ class ApplicationLoader:
 
 
 class AppIdsLoader:
+    name = "app_ids_loader"
+
     def __init__(self, redis, metrics_client: MetricsClient, timeout=10):
         self.metrics_client: MetricsClient = metrics_client
         self.redis: Redis = redis
