@@ -3,6 +3,7 @@ import itertools
 import time
 from typing import Optional, List, Dict, Tuple, Set
 
+import orjson
 from aioredis import Redis
 
 from spark_logs import db, kvstore
@@ -135,18 +136,23 @@ class AppIdsLoader:
         self.redis: Redis = redis
         self.timeout = timeout
 
-    async def set_for_app(self, app):
-        if app["State"] == "RUNNING":
-            await self.redis.zadd(
-                kvstore.applications_key(), int(app["StartTime"]), app["ID"]
-            )
+    async def set_for_apps(self, apps):
+        running_apps = [app for app in apps if app["State"] == "RUNNING"]
+        data = {app["ID"]: {k: app[k] for k in {"ID", "Name", "StartTime", "User"}} for app in running_apps}
+        await self.redis.set(
+            kvstore.applications_key(),
+            orjson.dumps(data)
+        )
 
     async def loop_update_app_ids(self):
         while True:
-            print("Updating app ids")
-            apps = await self.metrics_client.get_node_metrics("applications")
-            await asyncio.gather(*[self.set_for_app(app) for app in apps])
-            await asyncio.sleep(self.timeout)
+            try:
+                print("Updating app ids")
+                apps = await self.metrics_client.get_node_metrics("applications")
+                await self.set_for_apps(apps)
+                await asyncio.sleep(self.timeout)
+            except Exception as exc:
+                raise
 
 
 class JobSelector:

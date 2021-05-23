@@ -1,6 +1,3 @@
-import random
-from datetime import datetime, timedelta
-
 import dash_bootstrap_components as dbc
 import dash_core_components as dcc
 import dash_html_components as html
@@ -10,8 +7,9 @@ from dash.dependencies import Output, Input, State
 from dash.exceptions import PreventUpdate
 
 from frontend import kvstore
-from frontend.components import rest_api
 from frontend.components.abc import Component
+from frontend.tools import format_app
+from spark_logs import kvstore as kv_keys
 
 
 class TaskList(Component):
@@ -59,12 +57,11 @@ class TaskList(Component):
         def load_app_list(_, hostname_info):
             if not hostname_info:
                 return [], "", False
-            apps = []
+            apps = dict()
             try:
-                apps_raw = kvstore.client.zrangebyscore(
-                    "applications", min=-float("inf"), max=float("inf")
-                )
-                apps = [a.decode() for a in apps_raw]
+                apps = orjson.loads(kvstore.client.get(
+                    kv_keys.applications_key()
+                ))
             except Exception as exc:
                 # Alert
                 alert_mode = True
@@ -75,13 +72,18 @@ class TaskList(Component):
             return apps, alert_text, alert_mode
 
         @app.callback(
-            Output("app-list", "options"), Input("processing-applications-info", "data"),
+            Output("app-list", "options"), Input("processing-applications-ids", "data"), State("app-list-info", "data")
         )
-        def render_app_list(app_list_info):
-            if not app_list_info:
+        def render_app_list(processing_app_ids, app_list_info):
+            if not processing_app_ids or not app_list_info:
                 raise PreventUpdate
+
             return [
-                dict(label=f"{x} by since", value=x, title=x,) for x in app_list_info
+                dict(
+                    label=format_app(app_list_info[x]),
+                    value=x,
+                )
+                for x in processing_app_ids
             ]
 
         # Select applications
