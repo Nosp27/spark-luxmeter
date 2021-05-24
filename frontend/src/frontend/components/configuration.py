@@ -1,15 +1,12 @@
 from typing import Tuple, List, Set
 
 import dash
-import orjson
+import dash_core_components as dcc
+import dash_html_components as html
 import requests
 from dash.dependencies import Output, Input
 
-from frontend import kvstore
 from frontend.components import Component, rest_api
-import dash_html_components as html
-import dash_core_components as dcc
-
 from frontend.components.processors_check import ProcessorChecks
 from frontend.components.service_checks import ServiceCheck
 from frontend.tools import format_app
@@ -26,22 +23,27 @@ class ConfigurationPage(Component):
         return html.Div(
             children=[
                 self._create_app_selector([]),
-                html.Div([self.serivce_check.render(), self.processor_check.render()], style={"display": "flex"}),
-                dcc.Store(id="processing-applications-ids")
+                html.Div(
+                    [self.serivce_check.render(), self.processor_check.render()],
+                    style={"display": "flex"},
+                ),
+                dcc.Store(id="processing-applications-ids"),
             ],
         )
 
     def _create_app_selector(self, app_data):
-        return html.Div([
-            dcc.Input(id="app-filter", size="60", style={"margin": "10px"}),
-            dcc.Checklist(
-                options=app_data,
-                inputStyle={"margin": "10px"},
-                style={"height": "300px", "border": "solid black"},
-                className="overflow-auto",
-                id="applications-checklist",
-            )
-        ])
+        return html.Div(
+            [
+                dcc.Input(id="app-filter", size="60", style={"margin": "10px"}),
+                dcc.Checklist(
+                    options=app_data,
+                    inputStyle={"margin": "10px"},
+                    style={"height": "300px", "border": "solid black"},
+                    className="overflow-auto",
+                    id="applications-checklist",
+                ),
+            ]
+        )
 
     def add_callbacks(self, app):
         @app.callback(
@@ -49,7 +51,7 @@ class ConfigurationPage(Component):
             Output("applications-checklist", "value"),
             Input("applications-checklist", "value"),
             Input("processing-applications-ids", "data"),
-            Input("applications-actually-processing", "data")
+            Input("applications-actually-processing", "data"),
         )
         def toggle_selection(list_selected, processing_app_list, actually_processing):
             list_selected = list_selected or []
@@ -81,7 +83,9 @@ class ConfigurationPage(Component):
             return tuple(result_selected), tuple(result_selected)
 
         @app.callback(
-            Output("applications-checklist", "options"), Input("app-list-info", "data"), Input("app-filter", "value")
+            Output("applications-checklist", "options"),
+            Input("app-list-info", "data"),
+            Input("app-filter", "value"),
         )
         def refresh_application_checklist(apps, search_value):
             if not apps:

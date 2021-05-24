@@ -1,12 +1,10 @@
 import asyncio
-import pickle
 from abc import abstractmethod
 from datetime import datetime
 from typing import List, Dict, Type, Set, Iterable
 
 import graphitesend
 import numpy as np
-import orjson
 from aioredis import Redis
 
 from spark_logs import kvstore
@@ -15,10 +13,10 @@ from spark_logs.anomaly_detection.detectors import Model
 from spark_logs.anomaly_detection.features import (
     StageRunTimeFeature,
     StageShuffleReadFeature,
-    Feature)
+    Feature,
+)
 from spark_logs.config import DEFAULT_CONFIG
 from spark_logs.types import JobStages
-
 
 V = "1"
 
@@ -66,7 +64,10 @@ class SequentialJobsProcessor(BaseProcessor):
         self.graphite_port = DEFAULT_CONFIG.get("graphite_port")
         self._graphite_client = None
         self._batch = batch
-        self.features: List[Feature] = [StageRunTimeFeature(), StageShuffleReadFeature()]
+        self.features: List[Feature] = [
+            StageRunTimeFeature(),
+            StageShuffleReadFeature(),
+        ]
 
     @property
     def graphite_client(self):
@@ -84,9 +85,7 @@ class SequentialJobsProcessor(BaseProcessor):
         jobs: List[JobStages] = await self.load_jobs(redis)
         if not jobs:
             return
-        extractor = self.dataset_extractor_cls(
-            jobs, features=self.features,
-        )
+        extractor = self.dataset_extractor_cls(jobs, features=self.features,)
         grouped_dataset: Dict[str, np.ndarray] = extractor.extract()
         timestamps: Dict[str, List[datetime]] = extractor.get_all_timestamps()
 
@@ -98,7 +97,7 @@ class SequentialJobsProcessor(BaseProcessor):
                     group_data,
                     timestamps[group_key],
                     redis,
-                    group_alias=extractor.group_long_aliases[group_key]
+                    group_alias=extractor.group_long_aliases[group_key],
                 )
             except CancelGroupProcessing:
                 continue
@@ -112,7 +111,9 @@ class SequentialJobsProcessor(BaseProcessor):
         )
 
     @abstractmethod
-    async def process_group(self, group_key, group_data: np.ndarray, timestamps, redis, group_alias):
+    async def process_group(
+        self, group_key, group_data: np.ndarray, timestamps, redis, group_alias
+    ):
         pass
 
     async def load_jobs(self, redis) -> List[JobStages]:
@@ -129,15 +130,17 @@ class SequentialJobsProcessor(BaseProcessor):
             return []
         print(f"Data: {len(data)} lines")
 
-        job_ids_to_process: List[int] = sorted(data.keys() - reported_jobs)[-self._batch:]
+        job_ids_to_process: List[int] = sorted(data.keys() - reported_jobs)[
+            -self._batch :
+        ]
         print("Job ids: ", job_ids_to_process)
 
-        return [
-            JobStages.from_json(data[jid]) for jid in job_ids_to_process
-        ]
+        return [JobStages.from_json(data[jid]) for jid in job_ids_to_process]
 
     async def load_reported_jobs(self, redis) -> Set[int]:
-        key = kvstore.time_series_processed_jobs(app_id=self.app_id, processor_id=self.processor_id)
+        key = kvstore.time_series_processed_jobs(
+            app_id=self.app_id, processor_id=self.processor_id
+        )
         if not await redis.exists(key):
             return set()
         return {int(x) for x in await redis.smembers(key)}
@@ -146,8 +149,10 @@ class SequentialJobsProcessor(BaseProcessor):
         if not jobs:
             return
         await redis.sadd(
-            kvstore.time_series_processed_jobs(app_id=self.app_id, processor_id=self.processor_id),
-            *(job.job.jobId for job in jobs)
+            kvstore.time_series_processed_jobs(
+                app_id=self.app_id, processor_id=self.processor_id
+            ),
+            *(job.job.jobId for job in jobs),
         )
 
 
@@ -159,11 +164,11 @@ class SequentialDetector(SequentialJobsProcessor):
         self.detector_cls = detector_cls
         self._group_detectors = dict()
 
-    async def process_group(self, group_key, group_data: np.ndarray, timestamps, redis, group_alias):
+    async def process_group(
+        self, group_key, group_data: np.ndarray, timestamps, redis, group_alias
+    ):
         await redis.set(
-            kvstore.job_group_hashes_key(
-                app_id=self.app_id, group_hash=group_key
-            ),
+            kvstore.job_group_hashes_key(app_id=self.app_id, group_hash=group_key),
             group_alias,
         )
 
@@ -172,7 +177,9 @@ class SequentialDetector(SequentialJobsProcessor):
         detector = self._group_detectors[group_key]
 
         model_key = kvstore.anomaly_model_key(
-            app_id=self.app_id, model_name=self.detector_cls.model_name, job_group=group_key
+            app_id=self.app_id,
+            model_name=self.detector_cls.model_name,
+            job_group=group_key,
         )
         await safe_load_model(model_key, redis, detector)
 
@@ -181,14 +188,18 @@ class SequentialDetector(SequentialJobsProcessor):
             targets = detector.target(group_data)
             assert len(timestamps) == len(predicts)
             # Write predicts
-            self.write_predicts_to_graphite(
-                group_key, predicts, targets, timestamps
-            )
+            self.write_predicts_to_graphite(group_key, predicts, targets, timestamps)
         else:
             print("Detector not ready")
             raise CancelGroupProcessing()
 
-    def write_predicts_to_graphite(self, key: str, predicts: np.ndarray, targets: np.ndarray, timestamps: List[datetime]):
+    def write_predicts_to_graphite(
+        self,
+        key: str,
+        predicts: np.ndarray,
+        targets: np.ndarray,
+        timestamps: List[datetime],
+    ):
         assert len(predicts.shape) == 1
         client = self.graphite_client
         for predict, target, timestamp in zip(predicts, targets, timestamps):
@@ -204,24 +215,28 @@ class SequentialDetector(SequentialJobsProcessor):
 class SequentialFeatureBypass(SequentialJobsProcessor):
     processor_id = "feature_bypass"
 
-    async def process_group(self, group_key, group_data: np.ndarray, timestamps, redis, group_alias):
+    async def process_group(
+        self, group_key, group_data: np.ndarray, timestamps, redis, group_alias
+    ):
         await redis.set(
-            kvstore.job_group_hashes_key(
-                app_id=self.app_id, group_hash=group_key
-            ),
+            kvstore.job_group_hashes_key(app_id=self.app_id, group_hash=group_key),
             group_alias,
         )
 
         # Write raw features
         featurenames = [f.name for f in self.features]
-        raw_features_data = group_data.reshape((group_data.shape[0], -1, len(featurenames)))
-        raw_features_data = np.where(raw_features_data == None, 0, raw_features_data).mean(axis=1)
+        raw_features_data = group_data.reshape(
+            (group_data.shape[0], -1, len(featurenames))
+        )
+        raw_features_data = np.where(
+            raw_features_data == None, 0, raw_features_data
+        ).mean(axis=1)
         self.write_features_to_graphite(
             group_key, raw_features_data, timestamps, featurenames
         )
 
     def write_features_to_graphite(
-            self, key, data: np.ndarray, timestamps: List[datetime], featurenames: List[str]
+        self, key, data: np.ndarray, timestamps: List[datetime], featurenames: List[str]
     ):
         assert data.shape == (len(timestamps), len(featurenames))
         client = self.graphite_client
@@ -243,7 +258,9 @@ class SequentialJobsFitter(SequentialJobsProcessor):
         self.detector_cls = detector_cls
         self._group_detectors = dict()
 
-    async def process_group(self, group_key, group_data: np.ndarray, timestamps, redis, group_alias):
+    async def process_group(
+        self, group_key, group_data: np.ndarray, timestamps, redis, group_alias
+    ):
         self._group_detectors.setdefault(group_key, self.detector_cls())
         detector: Model = self._group_detectors[group_key]
         model_key = kvstore.anomaly_model_key(
@@ -259,7 +276,7 @@ class SequentialJobsFitter(SequentialJobsProcessor):
 
 async def safe_load_model(model_key: str, redis, detector):
     for i in range(3):
-        data = (await redis.get(model_key))
+        data = await redis.get(model_key)
         if data is None:
             return
         try:

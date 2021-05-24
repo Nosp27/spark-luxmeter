@@ -29,11 +29,15 @@ class GraphiteReader:
         if interpolation:
             result = {k: interpolate(v) for k, v in result.items()}
 
-        timestamps = [datetime.fromtimestamp(x[1]) for x in next(iter(result.values()), [])]
+        timestamps = [
+            datetime.fromtimestamp(x[1]) for x in next(iter(result.values()), [])
+        ]
         result = {
             key: [x[0] for x in metric_zipped] for key, metric_zipped in result.items()
         }
         return result, timestamps
 
 
-client = GraphiteReader(graphite_server=config["graphite_host"], graphite_port=config["graphite_port"])
+client = GraphiteReader(
+    graphite_server=config["graphite_host"], graphite_port=config["graphite_port"]
+)

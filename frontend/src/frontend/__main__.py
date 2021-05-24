@@ -1,12 +1,11 @@
-import dash_html_components as html
 import dash_core_components as dcc
+import dash_html_components as html
 
 from frontend import app
 from frontend.components import MemoryPlot, AppSummary, TaskList
 from frontend.components.configuration import ConfigurationPage
 from frontend.components.graphs.graphite_graph import GraphiteGraphComponent
 from frontend.components.host_selector import HostSelector
-from frontend.components.service_checks import ServiceCheck
 
 components = dict(
     host_selector=HostSelector(),
@@ -14,7 +13,7 @@ components = dict(
     task_selector=TaskList(),
     tasks_summary=AppSummary(uid="tasks-summary"),
     configuration=ConfigurationPage(),
-    anomaly_graph=GraphiteGraphComponent()
+    anomaly_graph=GraphiteGraphComponent(),
 )
 
 

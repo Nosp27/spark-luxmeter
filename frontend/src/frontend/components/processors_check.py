@@ -1,33 +1,22 @@
 import itertools
 
 import dash
+import dash_bootstrap_components as dbc
+import dash_daq as daq
+import dash_html_components as html
 import requests
 from dash.dependencies import Output, Input
 
 from frontend.components import Component
-import dash_daq as daq
-import dash_core_components as dcc
-import dash_bootstrap_components as dbc
-import dash_html_components as html
-
 from spark_logs.config import DEFAULT_CONFIG
 
 
 class ProcessorChecks(Component):
     def render(self):
-        return html.Div(
-            [
-
-            ],
-            style={"margin": "30px"},
-            id="processors-checks-dashboard"
-        )
+        return html.Div([], style={"margin": "30px"}, id="processors-checks-dashboard")
 
     def _render_loader_checks(self, loader_checks):
-        color_map = {
-            "done": "blue",
-            "running": "green"
-        }
+        color_map = {"done": "blue", "running": "green"}
 
         component_cards = []
         for component, data in loader_checks.items():
@@ -57,8 +46,8 @@ class ProcessorChecks(Component):
                                     )
                                     for task_idx, status in enumerate(tasks.values())
                                 ],
-                                style={"display": "flex"}
-                            )
+                                style={"display": "flex"},
+                            ),
                         ],
                         style={
                             "display": "flex",
@@ -67,11 +56,13 @@ class ProcessorChecks(Component):
                         },
                     )
                     elements.append(item)
-            component_cards.append(dbc.Card(
-                id=f"processor-checks-dashboard-{component}",
-                children=elements,
-                style={"width": "400px", "margin": "30px", "padding": "10px"},
-            ))
+            component_cards.append(
+                dbc.Card(
+                    id=f"processor-checks-dashboard-{component}",
+                    children=elements,
+                    style={"width": "400px", "margin": "30px", "padding": "10px"},
+                )
+            )
         return component_cards
 
     def add_callbacks(self, app):
@@ -104,7 +95,12 @@ class ProcessorChecks(Component):
             total_data["anomaly_detector"] = anomaly_detector_processors
 
             applications_actually_processing = {
-                app_id for app_id in itertools.chain.from_iterable(total_data.values()) if app_id.startswith("application_")
+                app_id
+                for app_id in itertools.chain.from_iterable(total_data.values())
+                if app_id.startswith("application_")
             }
 
-            return tuple(applications_actually_processing), self._render_loader_checks(total_data)
+            return (
+                tuple(applications_actually_processing),
+                self._render_loader_checks(total_data),
+            )

@@ -59,9 +59,7 @@ class TaskList(Component):
                 return [], "", False
             apps = dict()
             try:
-                apps = orjson.loads(kvstore.client.get(
-                    kv_keys.applications_key()
-                ))
+                apps = orjson.loads(kvstore.client.get(kv_keys.applications_key()))
             except Exception as exc:
                 # Alert
                 alert_mode = True
@@ -72,17 +70,16 @@ class TaskList(Component):
             return apps, alert_text, alert_mode
 
         @app.callback(
-            Output("app-list", "options"), Input("processing-applications-ids", "data"), State("app-list-info", "data")
+            Output("app-list", "options"),
+            Input("processing-applications-ids", "data"),
+            State("app-list-info", "data"),
         )
         def render_app_list(processing_app_ids, app_list_info):
             if not processing_app_ids or not app_list_info:
                 raise PreventUpdate
 
             return [
-                dict(
-                    label=format_app(app_list_info[x]),
-                    value=x,
-                )
+                dict(label=format_app(app_list_info[x]), value=x,)
                 for x in processing_app_ids
             ]
 

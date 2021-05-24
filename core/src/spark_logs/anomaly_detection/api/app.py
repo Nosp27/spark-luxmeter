@@ -8,7 +8,11 @@ from aiohttp import web
 from spark_logs import db
 from spark_logs.anomaly_detection.dataset_extractor import JobGroupedExtractor
 from spark_logs.anomaly_detection.detectors import AutoencoderDetector
-from spark_logs.anomaly_detection.processor import SequentialDetector, SequentialJobsFitter, SequentialFeatureBypass
+from spark_logs.anomaly_detection.processor import (
+    SequentialDetector,
+    SequentialJobsFitter,
+    SequentialFeatureBypass,
+)
 
 routes = web.RouteTableDef()
 
@@ -32,7 +36,12 @@ async def ls_tasks(request: aiohttp.web.Request):
     for app_id in processors:
         metrics = processors[app_id]
         for metric_name, metric_tasks in metrics.items():
-            tasks = dict(zip(["task_fit", "task_predict", "task_bypass"], map(task_status, list(metric_tasks.items())[1:])))
+            tasks = dict(
+                zip(
+                    ["task_fit", "task_predict", "task_bypass"],
+                    map(task_status, list(metric_tasks.items())[1:]),
+                )
+            )
             app_processors[app_id][metric_name] = tasks
     return web.json_response({"applications": app_processors})
 
@@ -43,16 +52,20 @@ async def client_for_app(request: aiohttp.web.Request):
     try:
         app_id = request.query["app_id"]
         metric_name = request.query.get("metric_name") or "iforest_processor"
-        detector_factory, fitter_factory, bypass_factory = app["METRIC_PROCESSORS"][metric_name]
+        detector_factory, fitter_factory, bypass_factory = app["METRIC_PROCESSORS"][
+            metric_name
+        ]
         detector = detector_factory(
             app_id, JobGroupedExtractor, detector_cls=AutoencoderDetector
         )
         fitter = fitter_factory(
-            app_id, JobGroupedExtractor, detector_cls=AutoencoderDetector, timeout=120, batch=1500,
+            app_id,
+            JobGroupedExtractor,
+            detector_cls=AutoencoderDetector,
+            timeout=120,
+            batch=1500,
         )
-        bypass = bypass_factory(
-            app_id, JobGroupedExtractor, timeout=10
-        )
+        bypass = bypass_factory(app_id, JobGroupedExtractor, timeout=10)
     except KeyError as exc:
         raise http_exceptions.HttpBadRequest("No key " + str(exc))
     redis = app["REDIS"]
@@ -88,7 +101,9 @@ async def rm_metric_proc(request: aiohttp.web.Request):
     for x in tasks:
         x.cancel()
     del app["APP_METRICS"][app_id][metric_name]
-    return aiohttp.web.json_response({"status": f"Deleted processor. Closed {len(tasks)} tasks"})
+    return aiohttp.web.json_response(
+        {"status": f"Deleted processor. Closed {len(tasks)} tasks"}
+    )
 
 
 @routes.post("/detector/rm")
@@ -112,7 +127,11 @@ async def rm_metrics_for_app(request: aiohttp.web.Request):
 
     del app["APP_METRICS"][app_id]
 
-    return aiohttp.web.json_response({"status": f"Deleted processors for {app_id}. Closed {total_tasks_closed} tasks"})
+    return aiohttp.web.json_response(
+        {
+            "status": f"Deleted processors for {app_id}. Closed {total_tasks_closed} tasks"
+        }
+    )
 
 
 async def create_redis_connection(app):
@@ -122,7 +141,11 @@ async def create_redis_connection(app):
 def start():
     app = aiohttp.web.Application(middlewares=[aiohttp.web.normalize_path_middleware()])
     app["METRIC_PROCESSORS"] = {
-        "sequential_processor": (SequentialDetector, SequentialJobsFitter, SequentialFeatureBypass),
+        "sequential_processor": (
+            SequentialDetector,
+            SequentialJobsFitter,
+            SequentialFeatureBypass,
+        ),
     }
     app["APP_METRICS"] = defaultdict(dict)
     app.router.add_routes(routes)

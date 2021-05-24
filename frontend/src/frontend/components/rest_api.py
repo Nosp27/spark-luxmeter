@@ -23,7 +23,9 @@ def _toggle_loader(app_id, on):
 def _toggle_anomaly_detection(app_id, on):
     command = "create" if on else "rm"
     response = requests.post(
-        "/".join([services_config["anomaly_detector"]["endpoint"], "detector", command]),
+        "/".join(
+            [services_config["anomaly_detector"]["endpoint"], "detector", command]
+        ),
         params={"app_id": app_id, "metric_name": "sequential_processor"},
         timeout=3,
     )

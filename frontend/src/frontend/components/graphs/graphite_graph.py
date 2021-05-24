@@ -1,10 +1,10 @@
+import dash_core_components as dcc
 import plotly.graph_objs as go
-from dash.dependencies import Output, Input, State
+from dash.dependencies import Output, Input
 from dash.exceptions import PreventUpdate
 
 from frontend import graphitestore
 from frontend.components import Component
-import dash_core_components as dcc
 
 V = "1"
 
@@ -22,9 +22,7 @@ class GraphiteGraphComponent(Component):
     def _compose_figure(self, metrics, timestamps):
         fig = go.Figure()
         for key, values in metrics.items():
-            fig.add_trace(
-                go.Scatter(x=timestamps, y=values, name=key, mode="lines")
-            )
+            fig.add_trace(go.Scatter(x=timestamps, y=values, name=key, mode="lines"))
         return fig
 
     def _figure_from_metrics(self, metrics_keys):

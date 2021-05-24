@@ -124,7 +124,7 @@ class AutoencoderDetector(Model):
 
     def _transform(self, arr, *, allow_refill, refill_max_part=0.5):
         numrows = arr.shape[0]
-        refill_numrows = (self.chunk_size - (numrows % self.chunk_size))
+        refill_numrows = self.chunk_size - (numrows % self.chunk_size)
         if allow_refill and refill_numrows / self.chunk_size < refill_max_part:
             refill_sample = numpy.median(arr, axis=0)
             refilled_arr = numpy.vstack([arr] + [refill_sample] * refill_numrows)
@@ -133,7 +133,10 @@ class AutoencoderDetector(Model):
             refill_numrows = 0
             truncate_numrows = numrows - (numrows % self.chunk_size)
             sizematched_array = arr[:truncate_numrows]
-        return sizematched_array.reshape(-1, self.chunk_size, arr.shape[1]), refill_numrows
+        return (
+            sizematched_array.reshape(-1, self.chunk_size, arr.shape[1]),
+            refill_numrows,
+        )
 
     def _fit(self, arr):
         arr_n = self._normalize(arr)
@@ -163,7 +166,9 @@ class AutoencoderDetector(Model):
     def save(self, filename):
         filepath = "/tmp/" + filename + ".h5"
         self.model.save(filepath)
-        return orjson.dumps((filepath, self.mean, self.std), option=orjson.OPT_SERIALIZE_NUMPY)
+        return orjson.dumps(
+            (filepath, self.mean, self.std), option=orjson.OPT_SERIALIZE_NUMPY
+        )
 
     def load(self, data):
         filepath, self.mean, self.std = orjson.loads(data)

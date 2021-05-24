@@ -1,7 +1,7 @@
 import asyncio
 import itertools
 import time
-from typing import Optional, List, Dict, Tuple, Set
+from typing import Optional, List, Dict, Set
 
 import orjson
 from aioredis import Redis
@@ -138,11 +138,11 @@ class AppIdsLoader:
 
     async def set_for_apps(self, apps):
         running_apps = [app for app in apps if app["State"] == "RUNNING"]
-        data = {app["ID"]: {k: app[k] for k in {"ID", "Name", "StartTime", "User"}} for app in running_apps}
-        await self.redis.set(
-            kvstore.applications_key(),
-            orjson.dumps(data)
-        )
+        data = {
+            app["ID"]: {k: app[k] for k in {"ID", "Name", "StartTime", "User"}}
+            for app in running_apps
+        }
+        await self.redis.set(kvstore.applications_key(), orjson.dumps(data))
 
     async def loop_update_app_ids(self):
         while True:
