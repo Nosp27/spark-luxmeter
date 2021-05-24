@@ -4,6 +4,7 @@ import dash_core_components as dcc
 from frontend import app
 from frontend.components import MemoryPlot, AppSummary, TaskList
 from frontend.components.configuration import ConfigurationPage
+from frontend.components.graphs.graphite_graph import GraphiteGraphComponent
 from frontend.components.host_selector import HostSelector
 from frontend.components.service_checks import ServiceCheck
 
@@ -13,6 +14,7 @@ components = dict(
     task_selector=TaskList(),
     tasks_summary=AppSummary(uid="tasks-summary"),
     configuration=ConfigurationPage(),
+    anomaly_graph=GraphiteGraphComponent()
 )
 
 
@@ -37,6 +39,7 @@ def create_components():
                                 id="data-for-known-app",
                                 children=[
                                     components["mem_plot"].random_plot(),
+                                    components["anomaly_graph"].render(),
                                     components["tasks_summary"].render(),
                                 ],
                             ),
@@ -81,6 +84,7 @@ if __name__ == "__main__":
             dcc.Store(id="app-list-info", data=[]),
             dcc.Store(id="applications-actually-processing", data=[]),
             dcc.Interval(id="interval", interval=3000),
+            dcc.Interval("service-check-interval", interval=300),
         ]
     )
 

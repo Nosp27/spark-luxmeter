@@ -80,7 +80,7 @@ class MemoryPlot(Component):
             client = graphitestore.client
             try:
                 metrics, timestamps = client.load(
-                    list(self.mem_keys_mapping.values()),
+                    list(self.mem_keys_mapping.keys()),
                     since="now-10d",
                     until="now-8d",
                     interpolation=True,

@@ -2,7 +2,10 @@ from datetime import datetime
 
 import requests
 
+from spark_logs.config import DEFAULT_CONFIG
 from spark_logs.time_series_tools import interpolate
+
+config = DEFAULT_CONFIG
 
 
 class GraphiteReader:
@@ -26,11 +29,11 @@ class GraphiteReader:
         if interpolation:
             result = {k: interpolate(v) for k, v in result.items()}
 
-        timestamps = [datetime.fromtimestamp(x[1]) for x in next(iter(result.values()))]
+        timestamps = [datetime.fromtimestamp(x[1]) for x in next(iter(result.values()), [])]
         result = {
             key: [x[0] for x in metric_zipped] for key, metric_zipped in result.items()
         }
         return result, timestamps
 
 
-client = GraphiteReader(graphite_server="localhost", graphite_port=55010)
+client = GraphiteReader(graphite_server=config["graphite_host"], graphite_port=config["graphite_port"])
