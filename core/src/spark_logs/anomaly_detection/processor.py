@@ -82,27 +82,35 @@ class SequentialJobsProcessor(BaseProcessor):
         return self._graphite_client
 
     async def process_iteration(self, redis: Redis):
-        jobs: List[JobStages] = await self.load_jobs(redis)
+        try:
+            jobs: List[JobStages] = await self.load_jobs(redis)
+        except Exception as exc:
+            raise
+        if self.processor_id == "model_fitter":
+            print()
         if not jobs:
             return
-        extractor = self.dataset_extractor_cls(jobs, features=self.features,)
+        extractor = self.dataset_extractor_cls(jobs, features=self.features)
         grouped_dataset: Dict[str, np.ndarray] = extractor.extract()
         timestamps: Dict[str, List[datetime]] = extractor.get_all_timestamps()
 
         processed_jobs = []
-        for group_key, group_data in grouped_dataset.items():
-            try:
-                await self.process_group(
-                    group_key,
-                    group_data,
-                    timestamps[group_key],
-                    redis,
-                    group_alias=extractor.group_long_aliases[group_key],
-                )
-            except CancelGroupProcessing:
-                continue
-            group_elements = extractor.get_groups()[group_key]
-            processed_jobs.extend([x.job_data for x in group_elements])
+        try:
+            for group_key, group_data in grouped_dataset.items():
+                try:
+                    await self.process_group(
+                        group_key,
+                        group_data,
+                        timestamps[group_key],
+                        redis,
+                        group_alias=extractor.group_long_aliases[group_key],
+                    )
+                except CancelGroupProcessing:
+                    continue
+                group_elements = extractor.get_groups()[group_key]
+                processed_jobs.extend([x.job_data for x in group_elements])
+        except Exception as exc:
+            raise
 
         await self.report_jobs(redis, processed_jobs)
         print(
@@ -126,7 +134,7 @@ class SequentialJobsProcessor(BaseProcessor):
             )
         }
         if not data:
-            print("No data")
+            print(f"{self.processor_id}: No data")
             return []
         print(f"Data: {len(data)} lines")
 
@@ -186,7 +194,11 @@ class SequentialDetector(SequentialJobsProcessor):
         if detector.ready:
             predicts = detector.detect_anomalies(group_data)
             targets = detector.target(group_data)
-            assert len(timestamps) == len(predicts)
+            try:
+                if len(timestamps) != len(predicts):
+                    raise ValueError
+            except ValueError as exc:
+                raise
             # Write predicts
             self.write_predicts_to_graphite(group_key, predicts, targets, timestamps)
         else:
@@ -205,8 +217,8 @@ class SequentialDetector(SequentialJobsProcessor):
         for predict, target, timestamp in zip(predicts, targets, timestamps):
             client.send_dict(
                 {
-                    f"sequential.{V}.{key}.predict": predict,
-                    f"sequential.{V}.{key}.target": target,
+                    f"sequential.{V}.{self.app_id}.{key}.predict": predict,
+                    f"sequential.{V}.{self.app_id}.{key}.target": target,
                 },
                 int(timestamp.timestamp()),
             )
@@ -243,7 +255,7 @@ class SequentialFeatureBypass(SequentialJobsProcessor):
         for data_row, timestamp in zip(data, timestamps):
             client.send_dict(
                 {
-                    f"sequential.{V}.{key}.{feature_name}": feature_value
+                    f"sequential.{V}.{self.app_id}.{key}.{feature_name}": feature_value
                     for feature_name, feature_value in zip(featurenames, data_row)
                 },
                 int(timestamp.timestamp()),
@@ -268,7 +280,10 @@ class SequentialJobsFitter(SequentialJobsProcessor):
         )
         if not detector.ready:
             await safe_load_model(model_key, redis, detector)
-        detector.fit(group_data)
+        try:
+            detector.fit(group_data)
+        except ValueError as exc:
+            raise CancelGroupProcessing
 
         filepath = detector.save(model_key)
         await redis.set(model_key, filepath)
@@ -276,9 +291,14 @@ class SequentialJobsFitter(SequentialJobsProcessor):
 
 async def safe_load_model(model_key: str, redis, detector):
     for i in range(3):
-        data = await redis.get(model_key)
-        if data is None:
+        try:
+            data = await redis.get(model_key)
+        except Exception as exc:
             return
+
+        if data is None:
+            return None
+
         try:
             detector.load(data)
             return

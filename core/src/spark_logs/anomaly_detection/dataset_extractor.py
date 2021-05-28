@@ -50,7 +50,8 @@ class JobGroupedExtractor(DatasetExtractor):
         if self._group_key_mapping is None:
             group_keys = {self.get_grouping_key(j) for j in self.jobs}
             self._group_key_mapping = {
-                group: f"job_group_{idx}" for idx, group in enumerate(group_keys)
+                group: f"job_group_{idx}"
+                for idx, group in enumerate(sorted(group_keys))
             }
 
         return self._group_key_mapping

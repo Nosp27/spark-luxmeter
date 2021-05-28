@@ -30,8 +30,8 @@ class ProcessorChecks(Component):
                                 service_name,
                                 style={
                                     "fontSize": "10pt",
-                                    "margin-top": "10px",
-                                    "margin-right": "70px",
+                                    "marginTop": "10px",
+                                    "marginRight": "70px",
                                 },
                             ),
                             html.Div(
@@ -78,21 +78,17 @@ class ProcessorChecks(Component):
             services_config = DEFAULT_CONFIG["services"]
             total_data = dict()
 
-            loader = services_config["loader"]["endpoint"]
-            try:
-                resp = requests.get(f"{loader}/client/ls")
-                loader_processors = resp.json()["applications"]
-            except requests.exceptions.RequestException as exc:
-                loader_processors = dict()
-            total_data["loader"] = loader_processors
-
-            anomaly_detector = services_config["anomaly_detector"]["endpoint"]
-            try:
-                resp = requests.get(f"{anomaly_detector}/client/ls")
-                anomaly_detector_processors = resp.json()["applications"]
-            except requests.exceptions.RequestException as exc:
-                anomaly_detector_processors = dict()
-            total_data["anomaly_detector"] = anomaly_detector_processors
+            for service_name, config in services_config.items():
+                endpoint = config["endpoint"]
+                try:
+                    resp = requests.get(f"{endpoint}/client/ls")
+                    resp.raise_for_status()
+                    processors = resp.json()["applications"]
+                except requests.exceptions.RequestException as exc:
+                    processors = dict()
+                except Exception as exc:
+                    raise
+                total_data[service_name] = processors
 
             applications_actually_processing = {
                 app_id

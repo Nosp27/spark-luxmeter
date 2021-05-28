@@ -1,11 +1,15 @@
 def interpolate(data_json):
     whole_data = [x[0] for x in data_json]
-    if all(x is None for x in whole_data):
-        return whole_data
+
+    first_not_none_idx, first_not_none = next(
+        ((idx, x) for idx, x in enumerate(whole_data) if x is not None), (None, None)
+    )
+    if not first_not_none:
+        return data_json
 
     timestamps = [x[1] for x in data_json]
 
-    for i in range(len(whole_data)):
+    for i in range(first_not_none_idx, len(whole_data)):
         if whole_data[i] is None:
             # Nearest not None on the right
             n_idx, next_value = next(
@@ -39,6 +43,4 @@ def interpolate(data_json):
                 dtp /= dts
                 assert 0.99 < dtn + dtp <= 1, dtn + dtp
                 whole_data[i] = next_value * dtn + prev_value * dtp
-
-    assert None not in whole_data
     return list(zip(whole_data, timestamps))

@@ -70,8 +70,8 @@ class AutoencoderDetector(Model):
     def __init__(self):
         super().__init__()
         self.fitted = False
-        self.mean = None
-        self.std = None
+        self.min = None
+        self.max = None
 
     @property
     def ready(self):
@@ -118,9 +118,15 @@ class AutoencoderDetector(Model):
         self.model = model
 
     def _normalize(self, arr):
-        self.mean = self.mean or arr.mean(axis=0)
-        self.std = self.std or arr.std(axis=0)
-        return (arr - self.mean) / self.std
+        try:
+            self.min = self.min if self.min is not None else arr.min(axis=0)
+            self.max = self.max if self.max is not None else arr.max(axis=0)
+            return numpy.nan_to_num(
+                (arr - self.min) / (numpy.array(self.max) - numpy.array(self.min)),
+                nan=0.1,
+            )
+        except Exception as exc:
+            raise
 
     def _transform(self, arr, *, allow_refill, refill_max_part=0.5):
         numrows = arr.shape[0]
@@ -155,22 +161,29 @@ class AutoencoderDetector(Model):
         arr_n = self._normalize(arr)
         x, refill = self._transform(arr_n, allow_refill=True, refill_max_part=1.0)
         pred = self.model.predict(x)
-        pred_truncated = pred.reshape((-1,))[:-refill]
+        pred_truncated = pred.reshape((-1,))
+        if refill:
+            pred_truncated = pred_truncated[:-refill]
         print("Predict done")
         return pred_truncated
 
     def target(self, arr) -> numpy.ndarray:
         arr_n = self._normalize(arr)
-        return numpy.percentile(arr_n, 95, axis=1)
+        return numpy.mean(arr_n, axis=1)
 
     def save(self, filename):
+        try:
+            if filename.endswith("group_0") == (len(self.max) == 6):
+                raise ValueError("AAA")
+        except Exception as exc:
+            raise
         filepath = "/tmp/" + filename + ".h5"
         self.model.save(filepath)
         return orjson.dumps(
-            (filepath, self.mean, self.std), option=orjson.OPT_SERIALIZE_NUMPY
+            (filepath, self.min, self.max), option=orjson.OPT_SERIALIZE_NUMPY
         )
 
     def load(self, data):
-        filepath, self.mean, self.std = orjson.loads(data)
+        filepath, self.min, self.max = orjson.loads(data)
         self.model = load_model(filepath)
         self.fitted = True

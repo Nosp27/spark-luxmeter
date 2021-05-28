@@ -13,6 +13,7 @@ from spark_logs.anomaly_detection.processor import (
     SequentialJobsFitter,
     SequentialFeatureBypass,
 )
+from spark_logs.task_tools import task_status
 
 routes = web.RouteTableDef()
 
@@ -24,13 +25,6 @@ async def hello(request):
 
 @routes.get("/client/ls")
 async def ls_tasks(request: aiohttp.web.Request):
-    def task_status(task_entry):
-        task_name, task = task_entry
-        status = "running"
-        if task.cancelled():
-            status = "cancelled"
-        return status
-
     processors = request.app["APP_METRICS"]
     app_processors = defaultdict(dict)
     for app_id in processors:
@@ -39,7 +33,7 @@ async def ls_tasks(request: aiohttp.web.Request):
             tasks = dict(
                 zip(
                     ["task_fit", "task_predict", "task_bypass"],
-                    map(task_status, list(metric_tasks.items())[1:]),
+                    map(lambda x: task_status(x), list(metric_tasks.values())[1:]),
                 )
             )
             app_processors[app_id][metric_name] = tasks

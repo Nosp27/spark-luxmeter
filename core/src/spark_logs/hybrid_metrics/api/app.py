@@ -7,8 +7,25 @@ from aiohttp import web
 
 from spark_logs import db
 from spark_logs.hybrid_metrics import skewness_score
+from spark_logs.task_tools import task_status
 
 routes = web.RouteTableDef()
+
+
+@routes.get("/")
+async def hello(request):
+    return web.json_response({"status": "healthy"})
+
+
+@routes.get("/client/ls")
+async def ls_tasks(request: aiohttp.web.Request):
+    app = request.app
+    running_processors = app["APP_METRICS"]
+    ret = defaultdict(dict)
+    for app_id, app_processor in running_processors.items():
+        for metric_name, processor in app_processor.items():
+            ret[app_id][metric_name] = {"task": task_status((processor["task"]))}
+        return web.json_response({"applications": ret})
 
 
 @routes.post("/metric/create")

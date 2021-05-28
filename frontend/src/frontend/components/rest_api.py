@@ -6,7 +6,26 @@ services_config = DEFAULT_CONFIG["services"]
 
 
 def toggle_app(app_id, on=True):
-    _toggle_anomaly_detection(app_id, on)
+    partial_toggle = False
+    try:
+        _toggle_anomaly_detection(app_id, on)
+        partial_toggle = True
+    except requests.exceptions.RequestException as exc:
+        pass
+
+    try:
+        _toggle_loader(app_id, on)
+        partial_toggle = True
+    except requests.exceptions.RequestException as exc:
+        pass
+
+    try:
+        _toggle_hybrid_metrics(app_id, on)
+        partial_toggle = True
+    except requests.exceptions.RequestException as exc:
+        pass
+
+    return partial_toggle
 
 
 def _toggle_loader(app_id, on):

@@ -49,7 +49,7 @@ class ServiceCheck(Component):
                                 ),
                                 html.P(
                                     service["status"],
-                                    style={"padding-top": "10px", "margin-end": "30px"},
+                                    style={"paddingTop": "10px", "margin-end": "30px"},
                                 ),
                                 daq.Indicator(
                                     id=f"{service['name'].lower().replace(' ', '-')}-health-indicator",

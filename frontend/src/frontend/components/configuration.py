@@ -62,11 +62,9 @@ class ConfigurationPage(Component):
             result_selected = self.old_selected.copy()
 
             for el in new_selected:
-                try:
-                    rest_api.toggle_app(el, on=True)
+                partially_toggled = rest_api.toggle_app(el, on=True)
+                if partially_toggled:
                     result_selected.add(el)
-                except requests.RequestException as exc:
-                    pass
 
             removed = set()
             for el in new_deselected:

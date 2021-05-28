@@ -5,6 +5,7 @@ from typing import Optional, List, Dict, Set
 
 import orjson
 from aioredis import Redis
+from graphitesend import GraphiteClient
 
 from spark_logs import db, kvstore
 from spark_logs.loaders.clients import MetricsClient
@@ -21,13 +22,15 @@ class ApplicationLoader:
         self.metrics_client: MetricsClient = metrics_client
         self.job_selector = JobSelector(fetch_last_jobs)
         self.redis: Optional[Redis] = None
+        self.graphite: Optional[GraphiteClient] = None
         self.timeout = timeout
 
         self.stored_job_ids: Set[int] = set()
 
     async def loop_update_app_metrics(self):
-        self.stored_job_ids = await self.load_stored_jobs()
         try:
+            self.stored_job_ids = await self.load_stored_jobs()
+            await self.store_configuration_info()
             while True:
                 await self.update_app_metrics()
                 await asyncio.sleep(self.timeout)
@@ -85,10 +88,11 @@ class ApplicationLoader:
                 running_jobs[job_id] = job_data
             else:
                 completed_jobs[job_id] = job_data
-        value = ApplicationMetrics(
-            executor_metrics=fresh_metrics.executor_metrics, jobs_stages=running_jobs
-        ).dump()
-        await self.redis.zadd(self.app_id, execution_timestamp, value)
+
+        self.stored_job_ids |= {
+            int(job_id) for job_id, job_data in fresh_metrics.jobs_stages.items()
+        }
+
         args = list(
             itertools.chain.from_iterable(
                 [
@@ -105,9 +109,29 @@ class ApplicationLoader:
             except Exception as exc:
                 raise
 
-        self.stored_job_ids |= {
-            int(job_id) for job_id, job_data in fresh_metrics.jobs_stages.items()
+        value = ApplicationMetrics(
+            executor_metrics=fresh_metrics.executor_metrics, jobs_stages=running_jobs
+        ).dump()
+        await self.redis.set(self.app_id, value)
+
+        if self.graphite is None:
+            self.graphite = db.connect_with_graphtie("loader")
+        ts_executor_metric_keys = (
+            "totalGCTime",
+            "totalShuffleRead",
+            "totalShuffleWrite",
+            "memoryUsed",
+        )
+        all_executor_metrics = fresh_metrics.executor_metrics
+        ts_executor_metrics = {
+            f"executors.{self.app_id}.{executor.id}.{k}": getattr(executor, k, 0)
+            for executor in all_executor_metrics
+            for k in ts_executor_metric_keys
         }
+        try:
+            self.graphite.send_dict(ts_executor_metrics)
+        except Exception as exc:
+            raise
 
     async def fetch_for_job(self, job: Job):
         stage_ids = job.stageIds
@@ -126,6 +150,41 @@ class ApplicationLoader:
             "stage", application_id=self.app_id, stage_id=str(stage_id)
         )
         return stage_and_tasks
+
+    async def store_configuration_info(self):
+        memory_keys = (
+            "spark.executor.memory",
+            "spark.driver.memory",
+            "spark.executor.memoryOverhead",
+        )
+        number_keys = (
+            "spark.executor.cores",
+            "spark.executor.instances",
+            "spark.dynamicAllocation.maxExecutors",
+        )
+        bool_keys = ("spark.dynamicAllocation.enabled",)
+        raw = await self.metrics_client.get_node_metrics(
+            node="environment", application_id=self.app_id
+        )
+        result = dict()
+        for key, value in raw["sparkProperties"]:
+            if key in memory_keys:
+                multiplier = 1
+                if value.endswith("g"):
+                    multiplier = 1024 * 1024 * 1024
+                    value = value[:-1]
+                elif value.endswith("m"):
+                    multiplier = 1024 * 1024
+                    value = value[:-1]
+                value = int(value) * multiplier
+                result[key] = value
+            elif key in number_keys:
+                result[key] = int(value)
+            elif key in bool_keys:
+                result[key] = bool(value)
+        await self.redis.set(
+            kvstore.app_environment_key(app_id=self.app_id), orjson.dumps(result)
+        )
 
 
 class AppIdsLoader:

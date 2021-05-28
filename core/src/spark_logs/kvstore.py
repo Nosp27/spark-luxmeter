@@ -24,3 +24,7 @@ def loaded_jobs_key(*, app_id):
 
 def anomaly_model_key(*, app_id, model_name, job_group):
     return f"ml:{app_id}:{model_name}:{job_group}"
+
+
+def app_environment_key(*, app_id):
+    return f"environment:{app_id}"

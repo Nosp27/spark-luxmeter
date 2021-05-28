@@ -6,6 +6,7 @@ from frontend.components import MemoryPlot, AppSummary, TaskList
 from frontend.components.configuration import ConfigurationPage
 from frontend.components.graphs.graphite_graph import GraphiteGraphComponent
 from frontend.components.host_selector import HostSelector
+from frontend.components.time_range_select import TimeRangeComponent
 
 components = dict(
     host_selector=HostSelector(),
@@ -14,11 +15,34 @@ components = dict(
     tasks_summary=AppSummary(uid="tasks-summary"),
     configuration=ConfigurationPage(),
     anomaly_graph=GraphiteGraphComponent(),
+    time_range=TimeRangeComponent(),
 )
 
 
 def create_configuration():
     return html.Div([components["configuration"].render()])
+
+
+def create_monitoring_data():
+    return [
+        html.Div(
+            children=[
+                components["time_range"].render(),
+                html.Div(
+                    [
+                        html.Div(
+                            [
+                                components["mem_plot"].render(),
+                                components["anomaly_graph"].render(),
+                            ]
+                        ),
+                        html.Div([components["tasks_summary"].render()]),
+                    ],
+                    style={"display": "flex"},
+                ),
+            ],
+        )
+    ]
 
 
 def create_components():
@@ -27,20 +51,13 @@ def create_components():
         children=[
             html.Div(
                 children=[
-                    html.Button(
-                        "Regenerate", "regenerate-btn", style=dict(display="block"),
-                    ),
                     html.Div(
                         id="data-for-known-host",
                         children=[
                             components["task_selector"].render(),
                             html.Div(
                                 id="data-for-known-app",
-                                children=[
-                                    components["mem_plot"].random_plot(),
-                                    components["anomaly_graph"].render(),
-                                    components["tasks_summary"].render(),
-                                ],
+                                children=create_monitoring_data(),
                             ),
                         ],
                     ),

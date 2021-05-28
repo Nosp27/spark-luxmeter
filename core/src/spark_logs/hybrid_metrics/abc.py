@@ -2,6 +2,7 @@ import abc
 import asyncio
 from typing import Dict, List
 
+import orjson
 from aioredis import Redis
 
 from spark_logs import kvstore
@@ -27,21 +28,18 @@ class HybridMetricStrategy(abc.ABC):
             raise
 
     async def _app_latest_apply(self, redis: Redis, app_id):
-        data = await redis.zrevrangebyscore(app_id, offset=0, count=1)
-        applications_data: List[ApplicationMetrics] = [
-            ApplicationMetrics.from_json(d) for d in data
-        ]
-        for app_data in applications_data:
-            jobs: Dict[str, JobStages] = app_data.jobs_stages
-            for job_data in jobs.values():
-                await asyncio.gather(
-                    *[
-                        self.write_stage_test(
-                            redis, app_id, stage_id, float(self.apply(stage_data))
-                        )
-                        for stage_id, stage_data in job_data.stages.items()
-                    ]
-                )
+        data = await redis.get(app_id)
+        app_data: ApplicationMetrics = ApplicationMetrics.from_json(data)
+        jobs: Dict[str, JobStages] = app_data.jobs_stages
+        for job_data in jobs.values():
+            await asyncio.gather(
+                *[
+                    self.write_stage_test(
+                        redis, app_id, stage_id, float(self.apply(stage_data))
+                    )
+                    for stage_id, stage_data in job_data.stages.items()
+                ]
+            )
 
     async def write_stage_test(self, redis: Redis, app_id, stage_id, test_result):
         key = kvstore.hybrid_metric_key(

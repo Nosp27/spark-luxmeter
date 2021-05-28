@@ -56,6 +56,8 @@ class HttpFetcher(BaseFetcher):
             job_id = data["job_id"]
             task_id = data["task_id"]
             return api_url / "jobs" / job_id / "tasks" / task_id
+        if node == "environment":
+            return api_url / "environment"
         raise NotImplementedError()
 
     async def fetch(self, *, node, resp_format, **data):

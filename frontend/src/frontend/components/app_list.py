@@ -91,24 +91,24 @@ class TaskList(Component):
         )
         def select_application(app_id):
             try:
-                app_metrics_json = kvstore.client.zrevrangebyscore(
-                    app_id, min="-inf", max="+inf", num=1, start=0
-                )
-            except requests.RequestException:
-                app_metrics_json = None
-            try:
                 raise requests.RequestException()
                 # hybrid_metrics_json = kvstore.client.zrevrangebyscore(
                 #     f"hm:{app_id}:{job_id}:{metric_name}"
                 # )
             except requests.RequestException:
                 hybrid_metrics_json = None
-            if app_metrics_json:
-                app_metrics_json = orjson.loads(app_metrics_json[0])
-            if hybrid_metrics_json:
-                hybrid_metrics_json = None
+
+            try:
+                raw = kvstore.client.get(kv_keys.app_environment_key(app_id=app_id))
+                if not raw:
+                    environment = None
+                else:
+                    environment = orjson.loads(raw)
+            except requests.exceptions.RequestException:
+                environment = None
+
             return dict(
                 app_id=app_id,
-                app_metrics_json=app_metrics_json,
                 hybrid_metrics_json=hybrid_metrics_json,
+                environment=environment,
             )
