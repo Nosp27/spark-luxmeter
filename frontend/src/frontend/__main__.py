@@ -4,7 +4,8 @@ import dash_html_components as html
 from frontend import app
 from frontend.components import MemoryPlot, AppSummary, TaskList
 from frontend.components.configuration import ConfigurationPage
-from frontend.components.graphs.graphite_graph import GraphiteGraphComponent
+from frontend.components.graphs.graphite_graph import AnomalyGraphiteGraphComponent, DifferGraphiteGraphComponent
+from frontend.components.graphs.taskplot import TaskPlot
 from frontend.components.host_selector import HostSelector
 from frontend.components.time_range_select import TimeRangeComponent
 
@@ -14,8 +15,10 @@ components = dict(
     task_selector=TaskList(),
     tasks_summary=AppSummary(uid="tasks-summary"),
     configuration=ConfigurationPage(),
-    anomaly_graph=GraphiteGraphComponent(),
+    anomaly_graph=AnomalyGraphiteGraphComponent(),
     time_range=TimeRangeComponent(),
+    taskplot=TaskPlot(),
+    differ_plot=DifferGraphiteGraphComponent(),
 )
 
 
@@ -33,7 +36,9 @@ def create_monitoring_data():
                         html.Div(
                             [
                                 components["mem_plot"].render(),
+                                components["taskplot"].render(),
                                 components["anomaly_graph"].render(),
+                                components["differ_plot"].render(),
                             ]
                         ),
                         html.Div([components["tasks_summary"].render()]),

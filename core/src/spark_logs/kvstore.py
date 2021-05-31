@@ -28,3 +28,7 @@ def anomaly_model_key(*, app_id, model_name, job_group):
 
 def app_environment_key(*, app_id):
     return f"environment:{app_id}"
+
+
+def maxline_key(*, app_id):
+    return f"maxline:{app_id}"

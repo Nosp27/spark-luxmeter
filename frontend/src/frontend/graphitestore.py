@@ -14,7 +14,7 @@ class GraphiteReader:
         self.graphite_server = graphite_server
         self.graphite_reader_port = graphite_reader_port
 
-    def load(self, keys, since=None, until=None, interpolation=False):
+    def load(self, keys, since=None, until=None, interpolation=False, lastrow=False, consolidation=None):
         params = [("format", "json")]
         if since and until:
             if "now" not in since:
@@ -25,6 +25,9 @@ class GraphiteReader:
                 until = until.strftime("%H:%M_%Y%m%d")
             params.extend([("from", since), ("until", until)])
         params.extend([("target", key) for key in keys])
+        if lastrow:
+            params.append(("maxDataPoints", 1))
+            params.append(("consolidateBy", consolidation or "last"))
         # params.append(("maxDataPoints", DEFAULT_CONFIG["graphite_maxDataPoints"]))
 
         resp = requests.get(

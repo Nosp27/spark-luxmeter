@@ -38,7 +38,7 @@ async def client_for_app(request: aiohttp.web.Request):
     except KeyError as exc:
         raise http_exceptions.HttpBadRequest("No key " + str(exc))
     redis = app["REDIS"]
-    task = asyncio.create_task(processor.loop_app_apply(redis, app_id))
+    task = asyncio.create_task(processor.loop_app_apply(redis, app["GRAPHITE"], app_id))
 
     app["APP_METRICS"][app_id][metric_name] = {
         "processor": processor,
@@ -78,14 +78,18 @@ async def rm_metrics_for_app(request: aiohttp.web.Request):
     if data is None:
         return aiohttp.web.json_response({"error": "App not found"})
 
+    keys_to_delete = set()
     for key, item in data.items():
         item["task"].cancel()
-        del data[key]
+        keys_to_delete.add(key)
+    for k in keys_to_delete:
+        del data[k]
     return aiohttp.web.json_response({"status": f"Deleted processors for {app_id}"})
 
 
 async def create_redis_connection(app):
     app["REDIS"] = await db.connect_with_redis()
+    app["GRAPHITE"] = db.connect_with_graphtie("hybrid_metrics")
 
 
 def start():

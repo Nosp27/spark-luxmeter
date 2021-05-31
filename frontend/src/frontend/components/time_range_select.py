@@ -26,7 +26,7 @@ class TimeRangeComponent(Component):
                         {"value": x, "label": x} for x in ("Interval", "Last N hours")
                     ],
                     style={"width": "200px", "margin": "3px"},
-                    value="Interval",
+                    value="Last N hours",
                     clearable=False,
                     id="tr-mode-dropdown",
                 ),
@@ -34,12 +34,12 @@ class TimeRangeComponent(Component):
                     self.render_for_interval(),
                     id="trc-container-1",
                     style={"display": "flex"},
+                    hidden=True,
                 ),
                 html.Div(
                     self.render_for_last_hours(),
                     id="trc-container-2",
                     style={"display": "flex"},
-                    hidden=True,
                 ),
                 html.Button("Apply", id="tr-apply-btn", style={"margin": "4px"}),
             ],

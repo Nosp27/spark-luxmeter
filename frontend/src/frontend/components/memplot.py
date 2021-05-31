@@ -60,6 +60,18 @@ class MemoryPlot(Component):
         fig.update_yaxes(type="log")
         return fig
 
+    def compose_from_executors(self, metrics):
+        colors = {"memoryUsed": "rosybrown", "Free": "lightgray"}
+        fig = go.Figure()
+        for metric_name, data in metrics.items():
+            fig.add_bar(x=[*data.keys()], y=[*data.values()], name=metric_name, marker_color=colors[metric_name])
+        fig.update_layout(
+            barmode="relative",
+            title_text="Executors memory",
+            transition_duration=500,
+        )
+        return fig
+
     def add_callbacks(self, app):
         @app.callback(
             Output("mem-plot", "figure"),
@@ -78,12 +90,14 @@ class MemoryPlot(Component):
             try:
                 raw_metrics, timestamps = client.load(
                     [
-                        f"groupByNodes(loader.executors.{app_id}.*.memoryUsed, 'sum', 2, 4)"
+                        f"loader.executors.{app_id}.*.memoryUsed"
                     ],
                     since=start_dt,
                     until=end_dt,
                     interpolation=False,
+                    lastrow=True,
                 )
+                print("MLOAD")
             except requests.exceptions.RequestException as exc:
                 raise PreventUpdate
             except ValueError:
@@ -99,14 +113,15 @@ class MemoryPlot(Component):
             max_memory = (e_mem + e_oh) * num_inst
 
             try:
-                metrics, *_ = raw_metrics.values()
-            except ValueError:
-                metrics = []
-            metrics = [x for x in metrics]
-            free_mem_metrics = [
-                max_mem - used_mem if used_mem is not None else None
-                for max_mem, used_mem in zip(itertools.repeat(max_memory), metrics)
-            ]
-            return self.compose_figure(
-                {"memoryUsed": metrics, "Free": free_mem_metrics}, timestamps,
+                metrics_by_executor = dict()
+                for key, metrics in raw_metrics.items():
+                    if "driver" in key:
+                        continue
+                    executor_id = int(key.split(".")[3])
+                    metrics_by_executor[executor_id] = metrics[-1]
+            except ValueError as exc:
+                metrics_by_executor = dict()
+            free_mem_metrics = {k: max_memory - v for k, v in metrics_by_executor.items() if v is not None}
+            return self.compose_from_executors(
+                {"memoryUsed": metrics_by_executor, "Free": free_mem_metrics},
             )

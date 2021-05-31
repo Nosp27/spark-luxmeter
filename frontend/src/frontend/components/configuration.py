@@ -84,8 +84,9 @@ class ConfigurationPage(Component):
             Output("applications-checklist", "options"),
             Input("app-list-info", "data"),
             Input("app-filter", "value"),
+            Input("hostname-info", "data"),
         )
-        def refresh_application_checklist(apps, search_value):
+        def refresh_application_checklist(apps, search_value, _):
             if not apps:
                 return dash.no_update
             app_data = [{"label": format_app(v), "value": k} for k, v in apps.items()]

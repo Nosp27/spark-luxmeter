@@ -52,7 +52,7 @@ class TaskList(Component):
             Output("app-list-alert", "children"),
             Output("app-list-alert", "is_open"),
             Input("interval", "n_intervals"),
-            State("hostname-info", "data"),
+            Input("hostname-info", "data"),
         )
         def load_app_list(_, hostname_info):
             if not hostname_info:

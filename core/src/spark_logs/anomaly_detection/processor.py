@@ -5,9 +5,10 @@ from typing import List, Dict, Type, Set, Iterable
 
 import graphitesend
 import numpy as np
+import orjson
 from aioredis import Redis
 
-from spark_logs import kvstore
+from spark_logs import kvstore, db
 from spark_logs.anomaly_detection.dataset_extractor import JobGroupedExtractor
 from spark_logs.anomaly_detection.detectors import Model
 from spark_logs.anomaly_detection.features import (
@@ -231,8 +232,8 @@ class SequentialFeatureBypass(SequentialJobsProcessor):
         self, group_key, group_data: np.ndarray, timestamps, redis, group_alias
     ):
         await redis.set(
-            kvstore.job_group_hashes_key(app_id=self.app_id, group_hash=group_key),
-            group_alias,
+            kvstore.job_group_hashes_key(app_id=self.app_id, group_hash=group_alias),
+            group_key,
         )
 
         # Write raw features

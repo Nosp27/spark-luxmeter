@@ -46,10 +46,14 @@ class SkewDetectStrategy(HybridMetricStrategy):
         if arr.shape[0] == 1:
             return False
 
-        sorted_arr = np.sort(arr)
-        shifted = np.array(arr[1:])
-        diffs = shifted - sorted_arr[:-1]
-        diffs_normalized = diffs / np.linalg.norm(diffs)
+        # sorted_arr = np.sort(arr)
+        # shifted = np.array(arr[1:])
+        # diffs = shifted - sorted_arr[:-1]
+        # diffs_normalized = diffs / np.linalg.norm(diffs)
+        #
+        # actual_quantile_deviation = np.max(diffs_normalized)
+        # return actual_quantile_deviation
 
-        actual_quantile_deviation = np.max(diffs_normalized)
-        return actual_quantile_deviation
+        std = arr.std()
+        return (arr.max() - arr.mean()) / (std * 3)
+
